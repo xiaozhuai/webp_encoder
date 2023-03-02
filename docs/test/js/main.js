@@ -1,62 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>webp_encoder</title>
-    <style>
-    html, body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-    }
-    .webp-container {
-        width: 100%;
-        height: 36%;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        align-items: center;
-        border-bottom: 1px solid #dddddd;
-        box-sizing: border-box;
-    }
-    .image-container {
-        width: calc(100% - 32px);
-        height: calc(64% - 32px);
-        padding: 16px;
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        grid-template-rows: min-content;
-        column-gap: 16px;
-        row-gap: 16px;
-        overflow-y: scroll;
-    }
-    .image {
-        width: 100%;
-    }
-    .hidden {
-        display: none;
-    }
-    #loading {
-        text-align: center;
-        font-size: 18px;
-    }
-    #webp {
-        max-width: calc(100% - 32px);
-        max-height: calc(100% - 32px);
-    }
-    </style>
-</head>
-<body>
-<div class="webp-container">
-    <div id="loading">Loading...</div>
-    <img id="webp" class="hidden"/>
-</div>
-<div class="image-container">
-</div>
-</body>
-<script type="application/javascript" src="webp_encoder.js"></script>
-<script type="application/javascript">
 async function loadImage(url) {
     const image = new Image();
     await new Promise((resolve, reject) => {
@@ -148,5 +89,3 @@ async function main() {
 }
 
 main().then();
-</script>
-</html>

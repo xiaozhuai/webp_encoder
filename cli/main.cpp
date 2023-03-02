@@ -31,10 +31,10 @@ int main() {
     encoder.SetOptions(file_options);
 
     std::vector<std::string> files = {
-            "pages/test/frames/frame_0.jpg",
-            "pages/test/frames/frame_1.jpg",
-            "pages/test/frames/frame_2.jpg",
-            "pages/test/frames/frame_3.jpg",
+            "docs/test/frames/frame_0.jpg",
+            "docs/test/frames/frame_1.jpg",
+            "docs/test/frames/frame_2.jpg",
+            "docs/test/frames/frame_3.jpg",
     };
 
     for (const auto &file : files) {
