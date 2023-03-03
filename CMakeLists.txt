@@ -17,7 +17,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     add_executable(${PROJECT_NAME} ${WASM_SOURCES})
     target_link_libraries(${PROJECT_NAME} PRIVATE embind)
     target_compile_options(${PROJECT_NAME} PRIVATE)
-    target_link_options(${PROJECT_NAME} PRIVATE -sASSERTIONS -sEXPORT_NAME="WebpEncoder" -sSINGLE_FILE=1 -sMODULARIZE=1)
+    target_link_options(${PROJECT_NAME} PRIVATE -sALLOW_MEMORY_GROWTH -sASSERTIONS -sEXPORT_NAME="WebpEncoder" -sSINGLE_FILE=1 -sMODULARIZE=1)
     add_custom_command(
             TARGET ${PROJECT_NAME}
             POST_BUILD

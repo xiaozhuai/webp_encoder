@@ -60,7 +60,11 @@ Vue.component('ImageFrame', ImageFrame);
 
 const App = {
     template: `
-        <div id="app">
+        <div id="app"
+            @drop.prevent.self.stop="onDropFiles"
+            @dragover.prevent.self.stop=""
+            @dragenter.prevent.self.stop="dragging = true;"
+            @dragleave.prevent.self.stop="dragging = false;">
             <div class="top-panel">
                 <div class="control-panel">
                     <div class="title">File Options</div>
@@ -86,10 +90,11 @@ const App = {
                         <el-form-item label="Mixed">
                             <el-switch v-model="fileOptions.mixed"/>
                         </el-form-item>
-                        <el-form-item>
-                            <el-button @click="genWebp">GO</el-button>
-                        </el-form-item>
-                        <div v-if="!loading" class="webp-info">Size: {{readableWebpSize}}</div>
+                        <div style="margin-top: 16px; text-align: center;">
+                            <el-button @click="clear" size="mini">Clear</el-button>
+                            <el-button @click="genWebp" size="mini" :disabled="loading">GO</el-button>
+                        </div>
+                        <div v-if="webp.src !== ''" class="webp-info">Size: {{readableWebpSize}}</div>
                     </el-form>
                 </div>
                 <div class="control-panel">
@@ -120,10 +125,12 @@ const App = {
                     </el-form>
                 </div>
                 <div class="webp-container" v-loading="loading">
-                    <img v-if="webp.src !== ''" :src="webp.src"/>
+                    <img v-if="webp.src !== ''" :src="webp.src" @click="downloadWebp"/>
                 </div>
             </div>
             <div class="frames-container">
+                <!-- TODO 为空时显示，需要先改为flex布局 -->
+                <!--<el-empty description="Drop image frames here"/>-->
                 <!-- TODO list懒加载 -->
                 <image-frame
                     v-for="frame of frames"
@@ -131,6 +138,8 @@ const App = {
                     :name="frame.name"
                     v-model="frame.options"/>
             </div>
+            <!-- TODO 修复拖拽时遮罩一直闪的问题 -->
+            <div class="drag-layer" v-if="dragging">Drop Files Here!</div>
         </div>
     `,
     data() {
@@ -160,6 +169,7 @@ const App = {
                 size: 0,
             },
             loading: true,
+            dragging: false,
         };
     },
     computed: {
@@ -198,6 +208,17 @@ const App = {
             return frames.sort((a, b) => {
                 return a.name.localeCompare(b.name);
             });
+        },
+        onDropFiles(evt) {
+            this.dragging = false;
+            let files = evt.dataTransfer.files;
+            let images = [];
+            for (let file of files) {
+                let src = URL.createObjectURL(file);
+                let name = file.name;
+                images.push({src, name});
+            }
+            this.onImages(images);
         },
         onImages(images) {
             let frames = [];
@@ -266,7 +287,18 @@ const App = {
             let number = Math.floor(Math.log(bytes) / Math.log(1024));
             return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) + ' ' + units[number];
         },
+        clear() {
+            this.frames = [];
+            this.webp = {
+                src: '',
+                size: 0,
+            };
+        },
         async genWebp() {
+            if (this.frames.length === 0) {
+                this.$message.error('No frames, please drop image frame to continue');
+                return;
+            }
             this.loading = true;
             this.webp = {
                 src: '',
@@ -277,6 +309,12 @@ const App = {
             let src = URL.createObjectURL(blob);
             this.webp = {src, size};
             this.loading = false;
+        },
+        downloadWebp() {
+            const a = document.createElement('a');
+            a.href = this.webp.src;
+            a.setAttribute('download', 'output.webp');
+            a.click();
         },
     },
 }
