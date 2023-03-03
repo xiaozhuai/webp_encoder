@@ -1,0 +1,133 @@
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+}
+
+.top-panel {
+    width: 100%;
+    height: 360px;
+    border-bottom: 1px solid #dddddd;
+    box-sizing: border-box;
+    font-size: 0;
+    display: flex;
+    flex-direction: row;
+}
+
+.control-panel {
+    height: 100%;
+    border-right: 1px solid #dddddd;
+    box-sizing: border-box;
+}
+
+.control-panel > .el-form {
+    padding: 16px;
+}
+
+.control-panel > .title {
+    font-size: 16px;
+    text-align: center;
+    line-height: 48px;
+    color: #303030;
+    border-bottom: 1px solid #eeeeee;
+}
+
+.control-panel .webp-info {
+    line-height: 32px;
+    height: 32px;
+    font-size: 14px;
+    color: #303030;
+    text-align: center;
+    margin-top: 32px;
+}
+
+.webp-container {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.webp-container > img {
+    max-width: calc(100% - 32px);
+    max-height: calc(100% - 32px);
+    cursor: pointer;
+}
+
+.webp-container > .loading {
+    text-align: center;
+    font-size: 18px;
+}
+
+.frames-container {
+    width: calc(100% - 32px);
+    max-height: calc(100% - 392px);
+    padding: 16px;
+    display: grid;
+    /* TODO 修复样式 使用flex布局 */
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: min-content;
+    column-gap: 16px;
+    row-gap: 16px;
+    overflow-y: auto;
+}
+
+.frames-container > .image-frame {
+    width: 100%;
+    font-size: 0;
+}
+
+.frames-container > .image-frame > img {
+    width: 100%;
+}
+
+.frames-container > .image-frame > .name {
+    font-size: 14px;
+    color: #303030;
+    line-height: 24px;
+    text-align: center;
+    border: 1px solid #eeeeee;
+}
+
+.frames-container > .image-frame > .el-form {
+    padding: 8px 8px;
+    border: 1px solid #eeeeee;
+    border-top: none;
+    margin: 0;
+}
+
+.el-form-item {
+    margin-bottom: 0 !important;
+}
+
+.el-form-item + .el-form-item {
+    margin-top: 8px;
+}
+
+.drag-layer {
+    z-index: 10000;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    font-size: 56px;
+    color: #eeeeee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+

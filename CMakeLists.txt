@@ -16,12 +16,17 @@ target_link_libraries(libwebp_encoder PRIVATE WebP::webp WebP::libwebpmux)
 if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     add_executable(${PROJECT_NAME} ${WASM_SOURCES})
     target_link_libraries(${PROJECT_NAME} PRIVATE embind)
-    target_compile_options(${PROJECT_NAME} PRIVATE -fexceptions)
-    target_link_options(${PROJECT_NAME} PRIVATE -fexceptions -sEXPORT_NAME="WebpEncoder" -sSINGLE_FILE=1 -sMODULARIZE=1)
+    target_compile_options(${PROJECT_NAME} PRIVATE)
+    target_link_options(${PROJECT_NAME} PRIVATE
+            -sALLOW_MEMORY_GROWTH
+            -sASSERTIONS
+            -sEXPORT_NAME="WebpEncoder"
+            -sSINGLE_FILE=1
+            -sMODULARIZE=1)
     add_custom_command(
             TARGET ${PROJECT_NAME}
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.js" "${CMAKE_CURRENT_SOURCE_DIR}/docs/test/js/"
+            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.js" "${CMAKE_CURRENT_SOURCE_DIR}/docs/js/"
             COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.js" "${CMAKE_CURRENT_SOURCE_DIR}/dist/"
     )
 else ()
