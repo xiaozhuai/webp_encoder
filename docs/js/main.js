@@ -3,7 +3,7 @@ const ImageFrame = {
         <div class="image-frame">
             <img :src="src">
             <div class="name">{{name}}</div>
-            <el-form label-width="120px" label-position="left" size="mini">
+            <el-form label-width="100px" label-position="left" size="mini">
                 <el-form-item label="Duration (ms)">
                     <el-input-number
                         :value="value.duration" 
@@ -86,12 +86,12 @@ const App = {
                         <el-form-item>
                             <el-button @click="genWebp">GO</el-button>
                         </el-form-item>
-                        <div v-if="webpSrc !== ''" class="webp-info">Size: {{readableWebpSize}}</div>
+                        <div v-if="!loading" class="webp-info">Size: {{readableWebpSize}}</div>
                     </el-form>
                 </div>
                 <div class="control-panel">
                     <div class="title">Batch Frame Options</div>
-                    <el-form label-width="120px" label-position="left" size="mini">
+                    <el-form label-width="100px" label-position="left" size="mini">
                         <el-form-item label="Duration (ms)">
                             <el-input-number 
                                 v-model="batchFrameOptions.duration"
@@ -116,8 +116,8 @@ const App = {
                         </el-form-item>
                     </el-form>
                 </div>
-                <div class="webp-container" v-loading="webpSrc === ''">
-                    <img v-if="webpSrc !== ''" :src="webpSrc"/>
+                <div class="webp-container" v-loading="loading">
+                    <img v-if="webp.src !== ''" :src="webp.src"/>
                 </div>
             </div>
             <div class="frames-container">
@@ -147,18 +147,16 @@ const App = {
                 lossless: false,
             },
             frames: [],
-            webpSrc: '',
-            webpSize: 0,
+            loading: true,
+            webp: {
+                src: '',
+                size: 0,
+            },
         };
     },
     computed: {
         readableWebpSize() {
-            let bytes = this.webpSize;
-            if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
-            let precision = 2;
-            let units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'];
-            let number = Math.floor(Math.log(bytes) / Math.log(1024));
-            return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) +  ' ' + units[number];
+            return this.toReadableSize(this.webp.size);
         }
     },
     async mounted() {
@@ -184,8 +182,9 @@ const App = {
     },
     methods: {
         sortFrames(frames) {
-            // TODO
-            return frames;
+            return frames.sort((a, b) => {
+                return a.name.localeCompare(b.name);
+            });
         },
         onImages(images) {
             let frames = [];
@@ -195,8 +194,7 @@ const App = {
                     options: {...this.frameOptions},
                 });
             }
-            frames = this.sortFrames(frames);
-            this.frames = frames;
+            this.frames = this.sortFrames(frames);
         },
         async loadImage(url) {
             const image = new Image();
@@ -240,13 +238,6 @@ const App = {
             encoder.Release();
             return {size, blob};
         },
-        async genWebp() {
-            this.webpSrc = '';
-            this.webpSize = 0;
-            let {size, blob} = await this.encodeWebp(this.frames, this.fileOptions);
-            this.webpSrc = URL.createObjectURL(blob);
-            this.webpSize = size;
-        },
         batchChangeFrameOption(key) {
             let value = this.batchFrameOptions[key];
             let frames = [...this.frames];
@@ -254,6 +245,25 @@ const App = {
                 frame.options[key] = value;
             }
             console.log(`batchChangeFrameOption ${key}: ${value}`);
+        },
+        toReadableSize(bytes) {
+            if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
+            if (bytes === 0) return 0 + ' bytes';
+            let precision = 2;
+            let units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'];
+            let number = Math.floor(Math.log(bytes) / Math.log(1024));
+            return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) + ' ' + units[number];
+        },
+        async genWebp() {
+            this.loading = true;
+            this.webp = {
+                src: '',
+                size: 0,
+            };
+            let {size, blob} = await this.encodeWebp(this.frames, this.fileOptions);
+            let src = URL.createObjectURL(blob);
+            this.webp = {src, size};
+            this.loading = false;
         },
     },
 }

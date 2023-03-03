@@ -95,7 +95,14 @@ html, body {
     line-height: 24px;
     text-align: center;
     border: 1px solid #eeeeee;
-    margin-bottom: 8px;
+    border-top: none;
+}
+
+.frames-container > .image-frame > .el-form {
+    padding: 8px 48px;
+    border: 1px solid #eeeeee;
+    border-top: none;
+    margin: 0;
 }
 
 .el-form-item {
