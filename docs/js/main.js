@@ -50,7 +50,10 @@ const ImageFrame = {
             options[key] = value;
             this.$emit('change', options)
             this.$emit('input', options)
-        }
+        },
+        clickName() {
+            this.$emit('click-name');
+        },
     },
 }
 Vue.component('ImageFrame', ImageFrame);
@@ -121,7 +124,12 @@ const App = {
                 </div>
             </div>
             <div class="frames-container">
-                <image-frame v-for="frame of frames" :src="frame.src" :name="frame.name" v-model="frame.options"/>
+                <!-- TODO list懒加载 -->
+                <image-frame
+                    v-for="frame of frames"
+                    :src="frame.src"
+                    :name="frame.name"
+                    v-model="frame.options"/>
             </div>
         </div>
     `,
@@ -147,11 +155,11 @@ const App = {
                 lossless: false,
             },
             frames: [],
-            loading: true,
             webp: {
                 src: '',
                 size: 0,
             },
+            loading: true,
         };
     },
     computed: {
@@ -179,6 +187,11 @@ const App = {
             },
         ]);
         await this.genWebp();
+        this.$notify.info({
+            title: 'Hint',
+            message: 'Drop image frames here to generate a webp!',
+            duration: 0
+        });
     },
     methods: {
         sortFrames(frames) {
@@ -234,9 +247,9 @@ const App = {
             }
             let bytes = encoder.Encode();
             let size = bytes.length;
-            let blob = new Blob([bytes], {type: 'image/webp'});
+            bytes = new Uint8Array(bytes);
             encoder.Release();
-            return {size, blob};
+            return {size, bytes};
         },
         batchChangeFrameOption(key) {
             let value = this.batchFrameOptions[key];
@@ -244,7 +257,6 @@ const App = {
             for (let frame of frames) {
                 frame.options[key] = value;
             }
-            console.log(`batchChangeFrameOption ${key}: ${value}`);
         },
         toReadableSize(bytes) {
             if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
@@ -260,7 +272,8 @@ const App = {
                 src: '',
                 size: 0,
             };
-            let {size, blob} = await this.encodeWebp(this.frames, this.fileOptions);
+            let {size, bytes} = await this.encodeWebp(this.frames, this.fileOptions);
+            let blob = new Blob([bytes], {type: 'image/webp'});
             let src = URL.createObjectURL(blob);
             this.webp = {src, size};
             this.loading = false;

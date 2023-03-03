@@ -74,7 +74,8 @@ html, body {
     max-height: calc(100% - 392px);
     padding: 16px;
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    /* TODO 修复样式 使用flex布局 */
+    grid-template-columns: repeat(8, 1fr);
     grid-template-rows: min-content;
     column-gap: 16px;
     row-gap: 16px;
@@ -83,6 +84,7 @@ html, body {
 
 .frames-container > .image-frame {
     width: 100%;
+    font-size: 0;
 }
 
 .frames-container > .image-frame > img {
@@ -95,11 +97,10 @@ html, body {
     line-height: 24px;
     text-align: center;
     border: 1px solid #eeeeee;
-    border-top: none;
 }
 
 .frames-container > .image-frame > .el-form {
-    padding: 8px 48px;
+    padding: 8px 8px;
     border: 1px solid #eeeeee;
     border-top: none;
     margin: 0;
