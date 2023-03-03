@@ -4,10 +4,16 @@
 
 #include "webp_encoder.hpp"
 
+#include <cstdio>
+#include <cstdarg>
 #include <webp/encode.h>
 #include <webp/mux.h>
 
-#define LOG(fmt, ...) do { printf(fmt "\n", ##__VA_ARGS__); } while (0)
+#if defined(WEBP_ENCODER_NO_LOG)
+#define LOGE(fmt, ...) do { abort(); } while (0)
+#else
+#define LOGE(fmt, ...) do { printf("Error: " fmt "\n", ##__VA_ARGS__); abort(); } while (0)
+#endif
 
 struct WebpHandler {
     WebPAnimEncoder *enc = nullptr;
@@ -17,27 +23,27 @@ struct WebpHandler {
 
 #define handler_ (reinterpret_cast<WebpHandler*>(raw_handler_))
 
-WebpEncoder::~WebpEncoder() {
-    Release();
-}
+static std::string StrFormat(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
 
-void WebpEncoder::Release() {
-    WebPDataClear(&handler_->data);
-    WebPAnimEncoderDelete(handler_->enc);
-    handler_->enc = nullptr;
-}
+#if defined(_WIN32)
+    const int sz = _vscprintf_l(fmt, c_locale(), args);
+#else
+    const int sz = vsnprintf(nullptr, 0, fmt, args);
+#endif
 
-bool WebpEncoder::Init() {
-    raw_handler_ = new WebpHandler();
+    std::string output(sz, '\0');
 
-    WebPDataInit(&handler_->data);
-    if (!WebPAnimEncoderOptionsInit(&handler_->anim_config)) {
-        LOG("Error: Init encoder options failed");
-        Release();
-        return false;
-    }
+#if defined(_WIN32)
+    _vsnprintf_s_l(&output.at(0), output.size() + 1, output.size(), fmt, c_locale(), args);
+#else
+    va_start(args, fmt);
+    vsnprintf(&output.at(0), output.size() + 1, fmt, args);
+#endif
+    va_end(args);
 
-    return true;
+    return output;
 }
 
 static bool SetLoopCount(int loop_count, WebPData *const webp_data) {
@@ -70,12 +76,33 @@ static bool SetLoopCount(int loop_count, WebPData *const webp_data) {
     return ok;
 }
 
-void WebpEncoder::SetOptions(const WebpFileOptions &options) {
+WebpEncoder::~WebpEncoder() {
+    Release();
+}
+
+void WebpEncoder::Release() {
+    WebPDataClear(&handler_->data);
+    WebPAnimEncoderDelete(handler_->enc);
+    handler_->enc = nullptr;
+}
+
+bool WebpEncoder::Init(const WebpFileOptions &options) {
+    raw_handler_ = new WebpHandler();
+
+    WebPDataInit(&handler_->data);
+    if (!WebPAnimEncoderOptionsInit(&handler_->anim_config)) {
+        LOGE("Init encoder options failed");
+        Release();
+        return false;
+    }
+
     SetLoopCount(options.loop, &handler_->data);
-    handler_->anim_config.minimize_size = options.min_size;
+    handler_->anim_config.minimize_size = options.minimize;
     handler_->anim_config.kmax = options.kmax;
     handler_->anim_config.kmin = options.kmin;
     handler_->anim_config.allow_mixed = options.mixed;
+
+    return true;
 }
 
 bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFrameOptions &options) {
@@ -84,13 +111,13 @@ bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFra
         height_ = height;
         handler_->enc = WebPAnimEncoderNew(width, height, &handler_->anim_config);
         if (handler_->enc == nullptr) {
-            LOG("Error: Init encoder failed");
+            LOGE("Init encoder failed");
             return false;
         }
     }
 
     if (width != width_ || height != height_) {
-        LOG("Error: Image size mismatch");
+        LOGE("Image size mismatch");
         return false;
     }
 
@@ -99,7 +126,7 @@ bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFra
 
     if (!WebPConfigInit(&config)
         || !WebPPictureInit(&pic)) {
-        LOG("Error: Init image config failed");
+        LOGE("Init image config failed");
         return false;
     }
 
@@ -111,7 +138,7 @@ bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFra
     config.method = options.method;
 
     if (!WebPValidateConfig(&config)) {
-        LOG("Error: Validate image config failed");
+        LOGE("Validate image config failed");
         return false;
     }
 
@@ -121,12 +148,12 @@ bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFra
 
 
     if (!WebPPictureImportRGBA(&pic, pixels, width * 4)) {
-        LOG("Error: Import image data failed");
+        LOGE("Import image data failed");
         return false;
     }
 
     if (!WebPAnimEncoderAdd(handler_->enc, &pic, timestamp_ms_, &config)) {
-        LOG("Error: Encode add frame failed");
+        LOGE("Encode add frame failed");
         WebPPictureFree(&pic);
         return false;
     }
@@ -140,7 +167,7 @@ bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFra
 const uint8_t *WebpEncoder::Encode(size_t *size) {
     if (!WebPAnimEncoderAdd(handler_->enc, nullptr, timestamp_ms_, nullptr)
         || !WebPAnimEncoderAssemble(handler_->enc, &handler_->data)) {
-        LOG("Error: Encode assemble failed");
+        LOGE("Encode assemble failed");
         *size = 0;
         return nullptr;
     }

@@ -10,7 +10,7 @@
 struct WebpFileOptions {
     // If true, minimize the output size (slow). Implicitly
     // disables key-frame insertion.
-    bool min_size = true;
+    bool minimize = true;
 
     // loop count (default: 0, = infinite loop)
     int loop = 0;
@@ -53,11 +53,9 @@ public:
 
     ~WebpEncoder();
 
-    bool Init();
+    bool Init(const WebpFileOptions &options);
 
     void Release();
-
-    void SetOptions(const WebpFileOptions &options);
 
     bool AddFrame(uint8_t *pixels, int width, int height, const WebpFrameOptions &options);
 

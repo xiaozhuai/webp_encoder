@@ -12,12 +12,12 @@ int main() {
     return 0;
 }
 
-static void SetOptions(
+static void WebpEncoder_Init(
         WebpEncoder &self,
         const emscripten::val &options) {
     WebpFileOptions o;
-    if (options.hasOwnProperty("min_size")) {
-        o.min_size = options["min_size"].as<bool>();
+    if (options.hasOwnProperty("minimize")) {
+        o.minimize = options["minimize"].as<bool>();
     }
     if (options.hasOwnProperty("loop")) {
         o.loop = options["loop"].as<int>();
@@ -31,23 +31,19 @@ static void SetOptions(
     if (options.hasOwnProperty("mixed")) {
         o.mixed = options["mixed"].as<bool>();
     }
-    self.SetOptions(o);
+    self.Init(o);
 }
 
-static void copyUint8Array(std::vector<uint8_t> &data, const emscripten::val &arr) {
-    data.resize(arr["length"].as<unsigned>());
-    emscripten::val memoryView{emscripten::typed_memory_view(data.size(), data.data())};
-    memoryView.call<void>("set", arr);
-}
-
-static void AddFrame(
+static void WebpEncoder_AddFrame(
         WebpEncoder &self,
         const emscripten::val &pixels,
         int width, int height,
         const emscripten::val &options) {
 
     std::vector<uint8_t> native_pixels;
-    copyUint8Array(native_pixels, pixels);
+    native_pixels.resize(pixels["length"].as<unsigned>());
+    emscripten::val memoryView{emscripten::typed_memory_view(native_pixels.size(), native_pixels.data())};
+    memoryView.call<void>("set", pixels);
 
     WebpFrameOptions o;
     if (options.hasOwnProperty("duration")) {
@@ -66,7 +62,7 @@ static void AddFrame(
     self.AddFrame(native_pixels.data(), width, height, o);
 }
 
-static emscripten::val Encode(WebpEncoder &self) {
+static emscripten::val WebpEncoder_Encode(WebpEncoder &self) {
     size_t size;
     const uint8_t *data = self.Encode(&size);
     return emscripten::val(emscripten::typed_memory_view(size, data));
@@ -75,9 +71,8 @@ static emscripten::val Encode(WebpEncoder &self) {
 EMSCRIPTEN_BINDINGS(webp_encoder) {
     emscripten::class_<WebpEncoder>("WebpEncoder")
             .constructor()
-            .function("Init", &WebpEncoder::Init)
+            .function("Init", &WebpEncoder_Init)
             .function("Release", &WebpEncoder::Release)
-            .function("SetOptions", &SetOptions)
-            .function("AddFrame", &AddFrame)
-            .function("Encode", &Encode);
+            .function("AddFrame", &WebpEncoder_AddFrame)
+            .function("Encode", &WebpEncoder_Encode);
 }

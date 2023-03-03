@@ -25,8 +25,7 @@ function getImageData(image) {
 async function encodeWebp(frames, fileOptions = {}) {
     let m = await WebpEncoder();
     let encoder = new m.WebpEncoder();
-    encoder.Init();
-    encoder.SetOptions(fileOptions);
+    encoder.Init(fileOptions);
 
     for (let frame of frames) {
         let image = await loadImage(frame.src);
@@ -40,12 +39,21 @@ async function encodeWebp(frames, fileOptions = {}) {
     return blob;
 }
 
+const fileOptions = {
+    minimize: true,
+    loop: 0,
+    kmax: 0,
+    kmin: 0,
+    mixed: true,
+};
+
 const frameOptions = {
     duration: 100,
     lossless: false,
     quality: 100,
     method: 0,
 };
+
 const frames = [
     {
         src: 'frames/frame_0.jpg',
@@ -74,13 +82,7 @@ async function main() {
         imageContainer.appendChild(image);
     }
     let webp = document.getElementById('webp');
-    let blob = await encodeWebp(frames, {
-        min_size: true,
-        loop: 0,
-        kmax: 0,
-        kmin: 0,
-        mixed: true,
-    });
+    let blob = await encodeWebp(frames, fileOptions);
     let url = URL.createObjectURL(blob);
     webp.src = url;
     webp.className = '';
