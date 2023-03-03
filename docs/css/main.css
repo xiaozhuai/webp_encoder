@@ -5,9 +5,12 @@ html, body {
     padding: 0;
 }
 
-.container {
+#app {
     width: 100%;
     height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
 }
 
 .top-panel {
@@ -15,28 +18,58 @@ html, body {
     height: 360px;
     border-bottom: 1px solid #dddddd;
     box-sizing: border-box;
+    font-size: 0;
+    display: flex;
+    flex-direction: row;
 }
 
 .control-panel {
-    width: 360px;
     height: 100%;
-    display: inline-block;
-    vertical-align: top;
     border-right: 1px solid #dddddd;
     box-sizing: border-box;
 }
 
+.control-panel > .el-form {
+    padding: 16px;
+}
+
+.control-panel > .title {
+    font-size: 16px;
+    text-align: center;
+    line-height: 48px;
+    color: #303030;
+    border-bottom: 1px solid #eeeeee;
+}
+
+.control-panel .webp-info {
+    line-height: 32px;
+    height: 32px;
+    font-size: 14px;
+    color: #303030;
+    text-align: center;
+    margin-top: 32px;
+}
+
 .webp-container {
-    width: calc(100% - 368px);
+    flex: 1;
     height: 100%;
-    display: inline-flex;
-    vertical-align: top;
+    display: flex;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
 }
 
-.image-container {
+.webp-container > img {
+    max-width: calc(100% - 32px);
+    max-height: calc(100% - 32px);
+}
+
+.webp-container > .loading {
+    text-align: center;
+    font-size: 18px;
+}
+
+.frames-container {
     width: calc(100% - 32px);
     max-height: calc(100% - 392px);
     padding: 16px;
@@ -48,20 +81,27 @@ html, body {
     overflow-y: auto;
 }
 
-.image {
+.frames-container > .image-frame {
     width: 100%;
 }
 
-.hidden {
-    display: none;
+.frames-container > .image-frame > img {
+    width: 100%;
 }
 
-#loading {
+.frames-container > .image-frame > .name {
+    font-size: 14px;
+    color: #303030;
+    line-height: 24px;
     text-align: center;
-    font-size: 18px;
+    border: 1px solid #eeeeee;
+    margin-bottom: 8px;
 }
 
-#webp {
-    max-width: calc(100% - 32px);
-    max-height: calc(100% - 32px);
+.el-form-item {
+    margin-bottom: 0 !important;
+}
+
+.el-form-item + .el-form-item {
+    margin-top: 8px;
 }
