@@ -4,7 +4,6 @@
 
 
 #include <string>
-#include <fstream>
 #include <vector>
 
 #include "image.hpp"
@@ -39,17 +38,10 @@ int main() {
     for (const auto &file : files) {
         Image image;
         image.ReadFile(file);
-        encoder.AddFrame(image.pixels, image.width, image.height, frame_options);
+        encoder.Push(image.pixels, image.width, image.height, frame_options);
     }
 
-    size_t size;
-    const uint8_t *bytes = encoder.Encode(&size);
-
-    std::ofstream out("test.webp");
-    out.write(reinterpret_cast<const char *>(bytes), static_cast<std::streamsize>(size));
-    out.close();
-
-    encoder.Release();
+    encoder.Write("test.webp");
 
     return 0;
 }

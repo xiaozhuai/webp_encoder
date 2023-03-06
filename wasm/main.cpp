@@ -12,7 +12,7 @@ int main() {
     return 0;
 }
 
-static void WebpEncoder_Init(
+static bool WebpEncoder_Init(
         WebpEncoder &self,
         const emscripten::val &options) {
     WebpFileOptions o;
@@ -31,10 +31,14 @@ static void WebpEncoder_Init(
     if (options.hasOwnProperty("mixed")) {
         o.mixed = options["mixed"].as<bool>();
     }
-    self.Init(o);
+    return self.Init(o);
 }
 
-static void WebpEncoder_AddFrame(
+static inline void WebpEncoder_Release(WebpEncoder &self) {
+    self.Release();
+}
+
+static bool WebpEncoder_Push(
         WebpEncoder &self,
         const emscripten::val &pixels,
         int width, int height,
@@ -59,7 +63,7 @@ static void WebpEncoder_AddFrame(
         o.method = options["method"].as<int>();
     }
 
-    self.AddFrame(native_pixels.data(), width, height, o);
+    return self.Push(native_pixels.data(), width, height, o);
 }
 
 static emscripten::val WebpEncoder_Encode(WebpEncoder &self) {
@@ -71,8 +75,8 @@ static emscripten::val WebpEncoder_Encode(WebpEncoder &self) {
 EMSCRIPTEN_BINDINGS(webp_encoder) {
     emscripten::class_<WebpEncoder>("WebpEncoder")
             .constructor()
-            .function("Init", &WebpEncoder_Init)
-            .function("Release", &WebpEncoder::Release)
-            .function("AddFrame", &WebpEncoder_AddFrame)
-            .function("Encode", &WebpEncoder_Encode);
+            .function("init", &WebpEncoder_Init)
+            .function("release", &WebpEncoder_Release)
+            .function("push", &WebpEncoder_Push)
+            .function("encode", &WebpEncoder_Encode);
 }
