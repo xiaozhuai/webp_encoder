@@ -1,3 +1,7 @@
+const WEBP_ENCODE_RET_UINT8ARRAY = 0;
+const WEBP_ENCODE_RET_BLOB = 1;
+const WEBP_ENCODE_RET_URL = 2;
+
 const ImageFrame = {
     template: `
         <div class="image-frame">
@@ -51,9 +55,6 @@ const ImageFrame = {
             this.$emit('change', options)
             this.$emit('input', options)
         },
-        clickName() {
-            this.$emit('click-name');
-        },
     },
 }
 Vue.component('ImageFrame', ImageFrame);
@@ -92,7 +93,7 @@ const App = {
                         </el-form-item>
                         <div style="margin-top: 16px; text-align: center;">
                             <el-button @click="clear" size="mini">Clear</el-button>
-                            <el-button @click="genWebp" size="mini" :disabled="loading">GO</el-button>
+                            <el-button @click="genWebp" size="mini" :disabled="loading">Generate!</el-button>
                         </div>
                         <div v-if="webp.src !== ''" class="webp-info">Size: {{readableWebpSize}}</div>
                     </el-form>
@@ -255,22 +256,50 @@ const App = {
             context.drawImage(image, 0, 0);
             return context.getImageData(0, 0, image.naturalWidth, image.naturalHeight);
         },
-        async encodeWebp(frames, fileOptions = {}) {
+        /**
+         *
+         * @param frames            Array<{src: string, options: Object}>
+         * @param fileOptions       Object
+         * @param returnType        0: Uint8Array
+         *                          1: {blob, size}
+         *                          2: {url, size}
+         * @returns {Promise<Uint8Array|{blob: Blob, size: number}|{url: string, size: number}>}
+         */
+        async encodeWebp(frames, fileOptions = {}, returnType = 0) {
             let m = await WebpEncoder();
             let encoder = new m.WebpEncoder();
-            encoder.Init(fileOptions);
+            encoder.init(fileOptions);
 
             for (let frame of frames) {
                 let image = await this.loadImage(frame.src);
                 let imageData = this.getImageData(image);
                 let rgbaPixels = new Uint8Array(imageData.data.buffer);
-                encoder.AddFrame(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
+                encoder.push(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
             }
-            let bytes = encoder.Encode();
-            let size = bytes.length;
-            bytes = new Uint8Array(bytes);
-            encoder.Release();
-            return {size, bytes};
+            let bytes = encoder.encode();
+            switch (returnType) {
+                case 0: {
+                    bytes = new Uint8Array(bytes);
+                    encoder.release();
+                    return bytes;
+                }
+                case 1: {
+                    let blob = new Blob([bytes], {type: 'image/webp'});
+                    let size = bytes.length;
+                    encoder.release();
+                    return {blob, size};
+                }
+                case 2: {
+                    let blob = new Blob([bytes], {type: 'image/webp'});
+                    let size = bytes.length;
+                    encoder.release();
+                    let url = URL.createObjectURL(blob);
+                    return {url, size};
+                }
+                default: {
+                    throw new Error(`Invalid return type ${returnType}`)
+                }
+            }
         },
         batchChangeFrameOption(key) {
             let value = this.batchFrameOptions[key];
@@ -304,10 +333,8 @@ const App = {
                 src: '',
                 size: 0,
             };
-            let {size, bytes} = await this.encodeWebp(this.frames, this.fileOptions);
-            let blob = new Blob([bytes], {type: 'image/webp'});
-            let src = URL.createObjectURL(blob);
-            this.webp = {src, size};
+            let {url, size} = await this.encodeWebp(this.frames, this.fileOptions, WEBP_ENCODE_RET_URL);
+            this.webp = {src: url, size};
             this.loading = false;
         },
         downloadWebp() {

@@ -6,8 +6,50 @@
 
 #include <cstdio>
 #include <cstdarg>
+#include <fstream>
+#include <functional>
+#include <utility>
+
 #include <webp/encode.h>
 #include <webp/mux.h>
+
+template<class F>
+class FinalAction {
+public:
+    FinalAction(F f) noexcept: f_(std::move(f)), invoke_(true) {}
+
+    FinalAction(FinalAction &&other) noexcept: f_(std::move(other.f_)), invoke_(other.invoke_) {
+        other.invoke_ = false;
+    }
+
+    FinalAction(const FinalAction &) = delete;
+
+    FinalAction &operator=(const FinalAction &) = delete;
+
+    ~FinalAction() noexcept {
+        if (invoke_) f_();
+    }
+
+private:
+    F f_;
+    bool invoke_;
+};
+
+template<class F>
+inline FinalAction<F> _finally(const F &f) noexcept {
+    return FinalAction<F>(f);
+}
+
+template<class F>
+inline FinalAction<F> _finally(F &&f) noexcept {
+    return FinalAction<F>(std::forward<F>(f));
+}
+
+#define concat1(a, b)       a ## b
+#define concat2(a, b)       concat1(a, b)
+#define _finally_object     concat2(_finally_object_, __COUNTER__)
+#define finally             auto _finally_object = [&]()
+#define finally2(func)      auto _finally_object = (func)
 
 #if defined(WEBP_ENCODER_NO_LOG)
 #define LOGE(fmt, ...) do { abort(); } while (0)
@@ -46,33 +88,36 @@ static std::string StrFormat(const char *fmt, ...) {
     return output;
 }
 
-static bool SetLoopCount(int loop_count, WebPData *const webp_data) {
+static bool SetLoopCount(int loop_count, WebPData *const data) {
     bool ok;
-    WebPMuxError err;
     uint32_t features;
-    WebPMuxAnimParams new_params;
-    WebPMux *const mux = WebPMuxCreate(webp_data, 1);
-    if (mux == nullptr) return 0;
-
-    err = WebPMuxGetFeatures(mux, &features);
-    ok = (err == WEBP_MUX_OK);
-    if (!ok || !(features & ANIMATION_FLAG)) goto End;
-
-    err = WebPMuxGetAnimationParams(mux, &new_params);
-    ok = (err == WEBP_MUX_OK);
-    if (ok) {
-        new_params.loop_count = loop_count;
-        err = WebPMuxSetAnimationParams(mux, &new_params);
-        ok = (err == WEBP_MUX_OK);
+    WebPMuxAnimParams params;
+    WebPMux *mux = WebPMuxCreate(data, 1);
+    if (mux == nullptr) {
+        return false;
     }
-    if (ok) {
-        WebPDataClear(webp_data);
-        err = WebPMuxAssemble(mux, webp_data);
-        ok = (err == WEBP_MUX_OK);
+    finally { WebPMuxDelete(mux); };
+
+    if ((WebPMuxGetFeatures(mux, &features) != WEBP_MUX_OK)
+        || !(features & ANIMATION_FLAG)) {
+        return false;
     }
 
-    End:
-    WebPMuxDelete(mux);
+    if (WebPMuxGetAnimationParams(mux, &params) != WEBP_MUX_OK) {
+        return false;
+    }
+
+    params.loop_count = loop_count;
+    if (WebPMuxSetAnimationParams(mux, &params) != WEBP_MUX_OK) {
+        return false;
+    }
+
+    WebPDataClear(data);
+
+    if (WebPMuxAssemble(mux, data) != WEBP_MUX_OK) {
+        return false;
+    }
+
     return ok;
 }
 
@@ -91,8 +136,8 @@ bool WebpEncoder::Init(const WebpFileOptions &options) {
 
     WebPDataInit(&handler_->data);
     if (!WebPAnimEncoderOptionsInit(&handler_->anim_config)) {
-        LOGE("Init encoder options failed");
         Release();
+        LOGE("Init encoder options failed");
         return false;
     }
 
@@ -105,7 +150,7 @@ bool WebpEncoder::Init(const WebpFileOptions &options) {
     return true;
 }
 
-bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFrameOptions &options) {
+bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOptions &options) {
     if (handler_->enc == nullptr) {
         width_ = width;
         height_ = height;
@@ -129,6 +174,7 @@ bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFra
         LOGE("Init image config failed");
         return false;
     }
+    finally { WebPPictureFree(&pic); };
 
     config.lossless = 1;
     if (!handler_->anim_config.allow_mixed) {
@@ -146,7 +192,6 @@ bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFra
     pic.width = width;
     pic.height = height;
 
-
     if (!WebPPictureImportRGBA(&pic, pixels, width * 4)) {
         LOGE("Import image data failed");
         return false;
@@ -154,24 +199,29 @@ bool WebpEncoder::AddFrame(uint8_t *pixels, int width, int height, const WebpFra
 
     if (!WebPAnimEncoderAdd(handler_->enc, &pic, timestamp_ms_, &config)) {
         LOGE("Encode add frame failed");
-        WebPPictureFree(&pic);
         return false;
     }
     timestamp_ms_ += options.duration;
-
-    WebPPictureFree(&pic);
 
     return true;
 }
 
 const uint8_t *WebpEncoder::Encode(size_t *size) {
+    *size = 0;
     if (!WebPAnimEncoderAdd(handler_->enc, nullptr, timestamp_ms_, nullptr)
         || !WebPAnimEncoderAssemble(handler_->enc, &handler_->data)) {
         LOGE("Encode assemble failed");
-        *size = 0;
         return nullptr;
     }
 
     *size = handler_->data.size;
     return handler_->data.bytes;
+}
+
+void WebpEncoder::Write(const std::string &file) {
+    size_t size;
+    const auto *bytes = Encode(&size);
+    std::ofstream out(file);
+    out.write(reinterpret_cast<const char *>(bytes), static_cast<std::streamsize>(size));
+    out.close();
 }
