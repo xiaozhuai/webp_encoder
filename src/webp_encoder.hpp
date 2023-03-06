@@ -1,11 +1,10 @@
 //
-// Copyright 2023 xiaozhuai
+// Copyright (c) 2023 xiaozhuai
 //
 
 #pragma once
 
 #include <string>
-#include <vector>
 
 struct WebpFileOptions {
     /**
@@ -112,6 +111,7 @@ public:
 private:
     int width_ = -1;
     int height_ = -1;
+    int loop_ = 0;
     int timestamp_ms_ = 0;
     void *raw_handler_ = nullptr;
 };

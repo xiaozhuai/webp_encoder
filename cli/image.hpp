@@ -1,5 +1,5 @@
 //
-// Copyright 2023 xiaozhuai
+// Copyright (c) 2023 xiaozhuai
 //
 
 #pragma once
@@ -23,4 +23,3 @@ public:
     int width = 0;
     int height = 0;
 };
-

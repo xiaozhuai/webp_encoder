@@ -71,9 +71,8 @@ html, body {
 }
 
 .frames-container {
-    width: calc(100% - 32px);
-    height: calc(100% - 392px);
-    padding: 16px;
+    width: 100%;
+    height: calc(100% - 360px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -87,19 +86,17 @@ html, body {
     align-content: start;
     flex-wrap: wrap;
     overflow-y: auto;
-    margin-right: -16px;
 }
 
 .frames-wrap > .image-frame {
     width: 250px;
-    height: 390px;
     font-size: 0;
-    margin: 16px 16px 0 0;
+    margin: 16px
 }
 
 .frames-wrap > i {
     width: 250px;
-    margin-right: 16px;
+    margin: 0 16px;
 }
 
 .frames-wrap > .image-frame > img {
@@ -129,6 +126,46 @@ html, body {
     margin-top: 8px;
 }
 
+.github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out;
+}
+
+@keyframes octocat-wave {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    20% {
+        transform: rotate(-25deg);
+    }
+
+    40% {
+        transform: rotate(10deg);
+    }
+
+    60% {
+        transform: rotate(-25deg);
+    }
+
+    80% {
+        transform: rotate(10deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+@media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+        animation: none;
+    }
+
+    .github-corner .octo-arm {
+        animation: octocat-wave 560ms ease-in-out;
+    }
+}
+
 .drag-layer {
     z-index: 10000;
     position: absolute;
@@ -144,4 +181,3 @@ html, body {
     justify-content: center;
     user-select: none;
 }
-

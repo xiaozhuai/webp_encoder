@@ -5,9 +5,10 @@ function modifyImageUrl(el, url) {
         el.style.backgroundImage = `url(${url})`;
     }
 }
+
 // 自定义图片懒加载指令
 Vue.directive('lazy-image', {
-    bind(el, { value = "" }) {
+    bind(el, {value = ""}) {
         if (!window.IntersectionObserver) {
             modifyImageUrl(el, value);
         } else {
@@ -26,9 +27,86 @@ Vue.directive('lazy-image', {
     },
 });
 
-const WEBP_ENCODE_RET_UINT8ARRAY = 0;
-const WEBP_ENCODE_RET_BLOB = 1;
-const WEBP_ENCODE_RET_URL = 2;
+const webpEncoder = {
+    ENCODE_RET_UINT8ARRAY: 0,
+    ENCODE_RET_BLOB: 1,
+    ENCODE_RET_URL: 2,
+    _module: null,
+    _getImageDataCanvas: null,
+    _getImageDataCanvasCtx: null,
+    async loadImage(url) {
+        const image = new Image();
+        await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = () => {
+                reject(new Error(`Error load image ${url}`));
+            };
+            image.src = url;
+        });
+        return image;
+    },
+    getImageData(image) {
+        if (!this._getImageDataCanvas) {
+            this._getImageDataCanvas = document.createElement('canvas');
+            this._getImageDataCanvasCtx = this._getImageDataCanvas.getContext('2d', {
+                willReadFrequently: true,
+            });
+        }
+        let canvas = this._getImageDataCanvas;
+        let context = this._getImageDataCanvasCtx;
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        context.drawImage(image, 0, 0);
+        return context.getImageData(0, 0, image.naturalWidth, image.naturalHeight);
+    },
+    /**
+     *
+     * @param frames            Array<{src: string, options: Object}>
+     * @param fileOptions       Object
+     * @param returnType        0: Uint8Array
+     *                          1: {blob, size}
+     *                          2: {url, size}
+     * @returns {Promise<Uint8Array|{blob: Blob, size: number}|{url: string, size: number}>}
+     */
+    async encode(frames, fileOptions = {}, returnType = 0) {
+        if (!this._module) {
+            this._module = await WebpEncoder();
+        }
+        let encoder = new this._module.WebpEncoder();
+        encoder.init(fileOptions);
+
+        for (let frame of frames) {
+            let image = await this.loadImage(frame.src);
+            let imageData = this.getImageData(image);
+            let rgbaPixels = new Uint8Array(imageData.data.buffer);
+            encoder.push(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
+        }
+        let bytes = encoder.encode();
+        switch (returnType) {
+            case 0: {
+                bytes = new Uint8Array(bytes);
+                encoder.release();
+                return bytes;
+            }
+            case 1: {
+                let blob = new Blob([bytes], {type: 'image/webp'});
+                let size = bytes.length;
+                encoder.release();
+                return {blob, size};
+            }
+            case 2: {
+                let blob = new Blob([bytes], {type: 'image/webp'});
+                let size = bytes.length;
+                encoder.release();
+                let url = URL.createObjectURL(blob);
+                return {url, size};
+            }
+            default: {
+                throw new Error(`Invalid return type ${returnType}`)
+            }
+        }
+    },
+}
 
 const ImageFrame = {
     template: `
@@ -80,11 +158,11 @@ const ImageFrame = {
         change(key, value) {
             let options = {...this.value};
             options[key] = value;
-            this.$emit('change', options)
-            this.$emit('input', options)
+            this.$emit('change', options);
+            this.$emit('input', options);
         },
     },
-}
+};
 Vue.component('ImageFrame', ImageFrame);
 
 const App = {
@@ -155,7 +233,7 @@ const App = {
                 </div>
             </div>
             <div class="frames-container">
-                <el-empty v-if="!frames.length" description="Drop image frames here"/>
+                <el-empty v-if="!frames.length" description="Drag and drop images to here"/>
                 <div v-else class="frames-wrap">
                     <image-frame
                         v-for="frame of frames"
@@ -166,13 +244,20 @@ const App = {
                     <i v-for="i in 10"></i>
                 </div>
             </div>
+            <a href="https://github.com/xiaozhuai/webp_encoder" class="github-corner" target="_blank" aria-label="View source on GitHub">
+                <svg width="80" height="80" viewBox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true">
+                  <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+                  <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
+                  <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path>
+                </svg>
+            </a>
             <div
                 class="drag-layer"
                 v-if="dragging"
                 @drop.prevent.self.stop="onDropFiles"
                 @dragover.prevent.self.stop=""
                 @dragleave.prevent.self.stop="dragging = false;">
-                Drop Files Here!
+                Drag & drop images to here!
             </div>
         </div>
     `,
@@ -208,7 +293,7 @@ const App = {
     },
     computed: {
         readableWebpSize() {
-            return this.toReadableSize(this.webp.size);
+            return this.toHumanReadableSize(this.webp.size);
         }
     },
     async mounted() {
@@ -233,7 +318,8 @@ const App = {
         await this.genWebp();
         this.$notify.info({
             title: 'Hint',
-            message: 'Drop image frames here to generate a webp!',
+            message: 'Drag and drop image to here to generate a webp!',
+            position: 'bottom-right',
             duration: 0
         });
     },
@@ -264,76 +350,6 @@ const App = {
             }
             this.frames = this.sortFrames(frames);
         },
-        async loadImage(url) {
-            const image = new Image();
-            await new Promise((resolve, reject) => {
-                image.onload = resolve;
-                image.onerror = () => {
-                    reject(new Error(`Error load image ${url}`));
-                };
-                image.src = url;
-            });
-            return image;
-        },
-        getImageData(image) {
-            if (!window.getImageDataCanvas) {
-                window.getImageDataCanvas = document.createElement('canvas');
-                window.getImageDataCanvasCtx = window.getImageDataCanvas.getContext('2d', {
-                    willReadFrequently: true,
-                });
-            }
-            let canvas = window.getImageDataCanvas;
-            let context = window.getImageDataCanvasCtx;
-            canvas.width = image.naturalWidth;
-            canvas.height = image.naturalHeight;
-            context.drawImage(image, 0, 0);
-            return context.getImageData(0, 0, image.naturalWidth, image.naturalHeight);
-        },
-        /**
-         *
-         * @param frames            Array<{src: string, options: Object}>
-         * @param fileOptions       Object
-         * @param returnType        0: Uint8Array
-         *                          1: {blob, size}
-         *                          2: {url, size}
-         * @returns {Promise<Uint8Array|{blob: Blob, size: number}|{url: string, size: number}>}
-         */
-        async encodeWebp(frames, fileOptions = {}, returnType = 0) {
-            let m = await WebpEncoder();
-            let encoder = new m.WebpEncoder();
-            encoder.init(fileOptions);
-
-            for (let frame of frames) {
-                let image = await this.loadImage(frame.src);
-                let imageData = this.getImageData(image);
-                let rgbaPixels = new Uint8Array(imageData.data.buffer);
-                encoder.push(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
-            }
-            let bytes = encoder.encode();
-            switch (returnType) {
-                case 0: {
-                    bytes = new Uint8Array(bytes);
-                    encoder.release();
-                    return bytes;
-                }
-                case 1: {
-                    let blob = new Blob([bytes], {type: 'image/webp'});
-                    let size = bytes.length;
-                    encoder.release();
-                    return {blob, size};
-                }
-                case 2: {
-                    let blob = new Blob([bytes], {type: 'image/webp'});
-                    let size = bytes.length;
-                    encoder.release();
-                    let url = URL.createObjectURL(blob);
-                    return {url, size};
-                }
-                default: {
-                    throw new Error(`Invalid return type ${returnType}`)
-                }
-            }
-        },
         batchChangeFrameOption(key) {
             let value = this.batchFrameOptions[key];
             let frames = [...this.frames];
@@ -341,13 +357,20 @@ const App = {
                 frame.options[key] = value;
             }
         },
-        toReadableSize(bytes) {
-            if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
-            if (bytes === 0) return 0 + ' bytes';
-            let precision = 2;
-            let units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'];
-            let number = Math.floor(Math.log(bytes) / Math.log(1024));
-            return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) + ' ' + units[number];
+        toHumanReadableSize(bytes, precision = 2) {
+            if (typeof bytes !== 'number' || isNaN(bytes) || !isFinite(bytes)) return '-';
+            const units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB', 'BB'];
+            let num = bytes;
+            let unit = 0;
+            if (bytes !== 0) {
+                unit = Math.floor(Math.log(bytes) / Math.log(1024));
+                num = bytes / Math.pow(1024, Math.floor(unit));
+            }
+            if (unit === 0) {
+                return num + ' ' + units[unit];
+            } else {
+                return num.toFixed(precision) + ' ' + units[unit];
+            }
         },
         clear() {
             this.frames = [];
@@ -358,7 +381,7 @@ const App = {
         },
         async genWebp() {
             if (this.frames.length === 0) {
-                this.$message.error('No frames, please drop image frame to continue');
+                this.$message.error('No frames, drag and drop image frames to continue');
                 return;
             }
             this.loading = true;
@@ -366,7 +389,7 @@ const App = {
                 src: '',
                 size: 0,
             };
-            let {url, size} = await this.encodeWebp(this.frames, this.fileOptions, WEBP_ENCODE_RET_URL);
+            let {url, size} = await webpEncoder.encode(this.frames, this.fileOptions, webpEncoder.ENCODE_RET_URL);
             this.webp = {src: url, size};
             this.loading = false;
         },

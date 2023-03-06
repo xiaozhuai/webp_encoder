@@ -1,5 +1,5 @@
 //
-// Copyright 2023 xiaozhuai
+// Copyright (c) 2023 xiaozhuai
 //
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -8,13 +8,9 @@
 
 #include <stb_image.h>
 
-Image::Image(const std::string &file) {
-    ReadFile(file);
-}
+Image::Image(const std::string &file) { ReadFile(file); }
 
-Image::~Image() {
-    Release();
-}
+Image::~Image() { Release(); }
 
 void Image::ReadFile(const std::string &file) {
     Release();
@@ -28,4 +24,3 @@ void Image::Release() {
     width = 0;
     height = 0;
 }
-

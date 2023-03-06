@@ -5,13 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(WebP CONFIG REQUIRED)
 
-file(GLOB_RECURSE LIB_SOURCES "src/*.h" "src/*.cpp")
-file(GLOB_RECURSE CLI_SOURCES "cli/*.h" "cli/*.cpp")
-file(GLOB_RECURSE WASM_SOURCES "wasm/*.h" "wasm/*.cpp")
+file(GLOB_RECURSE LIB_SOURCES "src/*.h" "src/*.hpp" "src/*.c" "src/*.cpp" "src/*.cc")
+file(GLOB_RECURSE CLI_SOURCES "cli/*.h" "cli/*.hpp" "cli/*.c" "cli/*.cpp" "cli/*.cc")
+file(GLOB_RECURSE WASM_SOURCES "wasm/*.h" "wasm/*.hpp" "wasm/*.c" "wasm/*.cpp" "wasm/*.cc")
 
-add_library(libwebp_encoder STATIC ${LIB_SOURCES})
-target_include_directories(libwebp_encoder PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(libwebp_encoder PRIVATE WebP::webp WebP::libwebpmux)
+add_library(lib${PROJECT_NAME} STATIC ${LIB_SOURCES})
+target_include_directories(lib${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(lib${PROJECT_NAME} PRIVATE WebP::webp WebP::libwebpmux)
+set_target_properties(lib${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 
 if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     add_executable(${PROJECT_NAME} ${WASM_SOURCES})
@@ -35,4 +36,13 @@ else ()
     target_include_directories(${PROJECT_NAME} PRIVATE "${Stb_INCLUDE_DIR}")
 endif ()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE libwebp_encoder)
+target_link_libraries(${PROJECT_NAME} PRIVATE lib${PROJECT_NAME})
+
+find_program(CLANG_FORMAT clang-format)
+if (CLANG_FORMAT)
+    add_custom_target(
+            format
+            COMMAND "${CLANG_FORMAT}" -i -verbose ${LIB_SOURCES} ${CLI_SOURCES} ${WASM_SOURCES}
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+endif ()
