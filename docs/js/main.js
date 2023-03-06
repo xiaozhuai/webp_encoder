@@ -1,3 +1,31 @@
+function modifyImageUrl(el, url) {
+    if (el.tagName.toLowerCase() === "img") {
+        el.setAttribute("src", url);
+    } else {
+        el.style.backgroundImage = `url(${url})`;
+    }
+}
+// 自定义图片懒加载指令
+Vue.directive('lazy-image', {
+    bind(el, { value = "" }) {
+        if (!window.IntersectionObserver) {
+            modifyImageUrl(el, value);
+        } else {
+            let observer = new IntersectionObserver(function (entries) {
+                entries.forEach(entry => {
+                    if (typeof entry.isIntersecting === "undefined") {
+                        modifyImageUrl(el, value);
+                    } else if (entry.isIntersecting) {
+                        observer.unobserve(entry.target);
+                        modifyImageUrl(entry.target, value)
+                    }
+                })
+            });
+            observer.observe(el);
+        }
+    },
+});
+
 const WEBP_ENCODE_RET_UINT8ARRAY = 0;
 const WEBP_ENCODE_RET_BLOB = 1;
 const WEBP_ENCODE_RET_URL = 2;
@@ -5,7 +33,7 @@ const WEBP_ENCODE_RET_URL = 2;
 const ImageFrame = {
     template: `
         <div class="image-frame">
-            <img :src="src">
+            <img v-lazy-image="src">
             <div class="name">{{name}}</div>
             <el-form label-width="100px" label-position="left" size="mini">
                 <el-form-item label="Duration (ms)">
@@ -62,10 +90,7 @@ Vue.component('ImageFrame', ImageFrame);
 const App = {
     template: `
         <div id="app"
-            @drop.prevent.self.stop="onDropFiles"
-            @dragover.prevent.self.stop=""
-            @dragenter.prevent.self.stop="dragging = true;"
-            @dragleave.prevent.self.stop="dragging = false;">
+            @dragenter.prevent.stop="dragging = true;">
             <div class="top-panel">
                 <div class="control-panel">
                     <div class="title">File Options</div>
@@ -130,17 +155,25 @@ const App = {
                 </div>
             </div>
             <div class="frames-container">
-                <!-- TODO 为空时显示，需要先改为flex布局 -->
-                <!--<el-empty description="Drop image frames here"/>-->
-                <!-- TODO list懒加载 -->
-                <image-frame
-                    v-for="frame of frames"
-                    :src="frame.src"
-                    :name="frame.name"
-                    v-model="frame.options"/>
+                <el-empty v-if="!frames.length" description="Drop image frames here"/>
+                <div v-else class="frames-wrap">
+                    <image-frame
+                        v-for="frame of frames"
+                        :key="frame.src"
+                        :src="frame.src"
+                        :name="frame.name"
+                        v-model="frame.options"/>
+                    <i v-for="i in 10"></i>
+                </div>
             </div>
-            <!-- TODO 修复拖拽时遮罩一直闪的问题 -->
-            <div class="drag-layer" v-if="dragging">Drop Files Here!</div>
+            <div
+                class="drag-layer"
+                v-if="dragging"
+                @drop.prevent.self.stop="onDropFiles"
+                @dragover.prevent.self.stop=""
+                @dragleave.prevent.self.stop="dragging = false;">
+                Drop Files Here!
+            </div>
         </div>
     `,
     data() {
