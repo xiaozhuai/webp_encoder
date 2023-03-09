@@ -30,6 +30,7 @@ int main() {
             .lossless = false,
             .quality = 100.0f,
             .method = 0,
+            .exact = false,
     };
 
     // Push frames in RGBA format
@@ -142,6 +143,7 @@ async function main() {
         quality: 100,
         method: 0,
         lossless: false,
+        exact: false,
     };
     let images = [
         {

@@ -191,6 +191,7 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
     }
     config.quality = options.quality;
     config.method = options.method;
+    config.exact = options.exact;
 
     if (!WebPValidateConfig(&config)) {
         LOGE("Validate image config failed");

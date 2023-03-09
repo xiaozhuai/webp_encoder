@@ -61,6 +61,13 @@ struct WebpFrameOptions {
      * quality/speed trade-off (0=fast, 6=slower-better)
      */
     int method = 0;
+
+    /**
+     * if true, preserve the exact RGB values under
+     * transparent area. Otherwise, discard this invisible
+     * RGB information for better compression.
+     */
+    bool exact = false;
 };
 
 class WebpEncoder {

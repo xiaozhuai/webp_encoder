@@ -53,7 +53,9 @@ static bool WebpEncoder_Push(
     if (options.hasOwnProperty("method")) {
         o.method = options["method"].as<int>();
     }
-
+    if (options.hasOwnProperty("exact")) {
+        o.exact = options["exact"].as<bool>();
+    }
     return self.Push(native_pixels.data(), width, height, o);
 }
 

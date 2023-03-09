@@ -22,6 +22,7 @@ int main() {
         .lossless = false,
         .quality = 100.0f,
         .method = 0,
+        .exact = false,
     };
 
     WebpEncoder encoder;

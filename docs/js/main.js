@@ -137,6 +137,11 @@ const ImageFrame = {
                         :value="value.lossless" 
                         @change="change('lossless', $event)"/>
                 </el-form-item>
+                <el-form-item label="Exact">
+                    <el-switch
+                        :value="value.exact" 
+                        @change="change('exact', $event)"/>
+                </el-form-item>
             </el-form>
         <div>
     `,
@@ -207,24 +212,50 @@ const App = {
                         <el-form-item label="Duration (ms)">
                             <el-input-number 
                                 v-model="batchFrameOptions.duration"
-                                :step="1"/>
-                            <el-button icon="el-icon-check" @click="batchChangeFrameOption('duration')"></el-button>
+                                :step="1"
+                                @change="batchFrameOptionsChanged.duration = true"/>
+                            <el-button
+                                icon="el-icon-check" plain
+                                :type="batchFrameOptionsChanged.duration ? 'danger' : ''"
+                                @click="batchChangeFrameOption('duration')"/>
                         </el-form-item>
                         <el-form-item label="Quality">
                             <el-input-number
                                 v-model="batchFrameOptions.quality"
-                                :min="0" :max="100" :step="0.1"/>
-                            <el-button icon="el-icon-check" @click="batchChangeFrameOption('quality')"></el-button>
+                                :min="0" :max="100" :step="0.1"
+                                @change="batchFrameOptionsChanged.quality = true"/>
+                            <el-button
+                                icon="el-icon-check" plain
+                                :type="batchFrameOptionsChanged.quality ? 'danger' : ''"
+                                @click="batchChangeFrameOption('quality')"/>
                         </el-form-item>
                         <el-form-item label="Method">
                             <el-input-number 
                                 v-model="batchFrameOptions.method"
-                                :min="0" :max="6" :step="1"/>
-                            <el-button icon="el-icon-check" @click="batchChangeFrameOption('method')"></el-button>
+                                :min="0" :max="6" :step="1"
+                                @change="batchFrameOptionsChanged.method = true"/>
+                            <el-button
+                                icon="el-icon-check" plain
+                                :type="batchFrameOptionsChanged.method ? 'danger' : ''"
+                                @click="batchChangeFrameOption('method')"/>
                         </el-form-item>
                         <el-form-item label="Lossless">
-                            <el-switch v-model="batchFrameOptions.lossless"/>
-                            <el-button icon="el-icon-check" @click="batchChangeFrameOption('lossless')"></el-button>
+                            <el-switch
+                                v-model="batchFrameOptions.lossless"
+                                @change="batchFrameOptionsChanged.lossless = true"/>
+                            <el-button
+                                icon="el-icon-check" plain
+                                :type="batchFrameOptionsChanged.lossless ? 'danger' : ''"
+                                @click="batchChangeFrameOption('lossless')"/>
+                        </el-form-item>
+                        <el-form-item label="Exact">
+                            <el-switch
+                                v-model="batchFrameOptions.exact"
+                                @change="batchFrameOptionsChanged.exact = true"/>
+                            <el-button
+                                icon="el-icon-check" plain
+                                :type="batchFrameOptionsChanged.exact ? 'danger' : ''"
+                                @click="batchChangeFrameOption('exact')"/>
                         </el-form-item>
                     </el-form>
                 </div>
@@ -275,12 +306,21 @@ const App = {
                 quality: 100,
                 method: 0,
                 lossless: false,
+                exact: false,
             },
             batchFrameOptions: {
                 duration: 100,
                 quality: 100,
                 method: 0,
                 lossless: false,
+                exact: false,
+            },
+            batchFrameOptionsChanged: {
+                duration: false,
+                quality: false,
+                method: false,
+                lossless: false,
+                exact: false,
             },
             frames: [],
             webp: {
@@ -356,6 +396,7 @@ const App = {
             for (let frame of frames) {
                 frame.options[key] = value;
             }
+            this.batchFrameOptionsChanged[key] = false;
         },
         toHumanReadableSize(bytes, precision = 2) {
             if (typeof bytes !== 'number' || isNaN(bytes) || !isFinite(bytes)) return '-';
