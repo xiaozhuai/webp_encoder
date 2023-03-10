@@ -19,9 +19,10 @@ if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     target_link_libraries(${PROJECT_NAME} PRIVATE embind)
     target_compile_options(${PROJECT_NAME} PRIVATE)
     target_link_options(${PROJECT_NAME} PRIVATE
-            -sALLOW_MEMORY_GROWTH
-            -sASSERTIONS
             -sEXPORT_NAME="WebpEncoder"
+            -sALLOW_MEMORY_GROWTH=1
+            -sNO_FILESYSTEM=1
+            -sASSERTIONS=1
             -sSINGLE_FILE=1
             -sMODULARIZE=1)
     add_custom_command(
