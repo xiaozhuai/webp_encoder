@@ -216,7 +216,7 @@ const App = {
                         </el-form-item>
                         <div style="margin-top: 16px; text-align: center;">
                             <el-button @click="clear" size="mini">Clear</el-button>
-                            <el-button @click="genWebp" size="mini" :disabled="loading">Generate!</el-button>
+                            <el-button @click="genWebp" size="mini" :disabled="loading">Encode!</el-button>
                         </div>
                         <div v-if="webp.src !== ''" class="webp-info">Size: {{readableWebpSize}}</div>
                         <div v-if="loading" class="webp-info">
@@ -319,13 +319,6 @@ const App = {
                 minimize: true,
                 mixed: true,
             },
-            frameOptions: {
-                duration: 100,
-                quality: 100,
-                method: 0,
-                lossless: false,
-                exact: false,
-            },
             batchFrameOptions: {
                 duration: 100,
                 quality: 100,
@@ -404,7 +397,7 @@ const App = {
             for (let image of images) {
                 frames.push({
                     ...image,
-                    options: {...this.frameOptions},
+                    options: {...this.batchFrameOptions},
                 });
             }
             this.frames = this.sortFrames(frames);
@@ -461,7 +454,7 @@ const App = {
                 this.loading = false;
             } catch (e) {
                 console.error(e);
-                this.$message.error('Generate webp failed! Please check log in console!');
+                this.$message.error('Encode webp failed! Please check logs in console!');
                 this.progress = 0;
                 this.loading = false;
             }

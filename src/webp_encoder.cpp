@@ -56,11 +56,16 @@ inline FinalAction<F> final(F &&f) noexcept {
 #define finally2(func)  _finally::FinalAction _finally_object = _finally::final(func)
 
 #if defined(WEBP_ENCODER_NO_LOG)
+#define LOGD(fmt, ...)
 #define LOGE(fmt, ...) \
     do {               \
         abort();       \
     } while (0)
 #else
+#define LOGD(fmt, ...)                   \
+    do {                                 \
+        printf(fmt "\n", ##__VA_ARGS__); \
+    } while (0)
 #define LOGE(fmt, ...)                             \
     do {                                           \
         printf("Error: " fmt "\n", ##__VA_ARGS__); \
@@ -131,6 +136,16 @@ static bool SetLoopCount(int loop_count, WebPData *const data) {
     return ok;
 }
 
+std::string WebpFileOptions::to_string() const {
+    return StrFormat("WebpFileOptions{loop: %d, kmin: %d, kmax: %d, minimize: %d, mixed: %d}", loop, kmin, kmax,
+                     minimize, mixed);
+}
+
+std::string WebpFrameOptions::to_string() const {
+    return StrFormat("WebpFrameOptions{duration: %d, quality: %.1f, method: %d, lossless: %d, exact: %d}", duration,
+                     quality, method, lossless, exact);
+}
+
 WebpEncoder::~WebpEncoder() { Release(); }
 
 void WebpEncoder::Release() {
@@ -197,7 +212,7 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
     // #endif
 
     if (!WebPValidateConfig(&config)) {
-        LOGE("Validate image config failed");
+        LOGE("Invalid image config");
         return false;
     }
 
@@ -211,7 +226,7 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
     }
 
     if (!WebPAnimEncoderAdd(handler_->enc, &pic, timestamp_ms_, &config)) {
-        LOGE("Encode add frame failed");
+        LOGE("Encoder add frame failed, %d", pic.error_code);
         return false;
     }
     timestamp_ms_ += options.duration;
@@ -236,7 +251,7 @@ const uint8_t *WebpEncoder::Encode(size_t *size) {
 void WebpEncoder::Write(const std::string &file) {
     size_t size;
     const auto *bytes = Encode(&size);
-    std::ofstream out(file);
+    std::ofstream out(file, std::ios_base::out | std::ios_base::binary);
     out.write(reinterpret_cast<const char *>(bytes), static_cast<std::streamsize>(size));
     out.close();
 }

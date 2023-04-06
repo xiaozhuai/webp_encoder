@@ -7,7 +7,7 @@ AlignConsecutiveMacros:
     AlignCompound:   false
     PadOperators:    false
 AccessModifierOffset: -4
-AlignAfterOpenBracket: AlwaysBreak
+#AlignAfterOpenBracket: AlwaysBreak
 AlignArrayOfStructures: Right
 ColumnLimit: 120
 QualifierAlignment: Left

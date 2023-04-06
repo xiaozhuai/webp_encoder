@@ -35,6 +35,8 @@ struct WebpFileOptions {
      * If true, use mixed compression mode; may choose
      */
     bool mixed = true;
+
+    [[nodiscard]] std::string to_string() const;
 };
 
 struct WebpFrameOptions {
@@ -68,6 +70,8 @@ struct WebpFrameOptions {
      * RGB information for better compression.
      */
     bool exact = false;
+
+    [[nodiscard]] std::string to_string() const;
 };
 
 class WebpEncoder {
