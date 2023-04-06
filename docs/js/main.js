@@ -70,17 +70,13 @@ const webpEncoder = {
      * @returns {Promise<Uint8Array|{blob: Blob, size: number}|{url: string, size: number}>}
      */
     async encode(frames, callback, fileOptions = {}, returnType = 0) {
-        let cc = async p => {
-            callback(p);
-            return new Promise(resolve => setTimeout(resolve, 1));
-        }
-        await cc(0);
+        await callback(0);
         if (!this._module) {
             this._module = await WebpEncoder();
         }
         let encoder = new this._module.WebpEncoder();
         encoder.init(fileOptions);
-        await cc(5);
+        await callback(5);
 
         let c = 0;
         for (let frame of frames) {
@@ -89,23 +85,23 @@ const webpEncoder = {
             let rgbaPixels = new Uint8Array(imageData.data.buffer);
             encoder.push(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
             c++;
-            await cc(c / frames.length * 90 + 5);
+            await callback(c / frames.length * 90 + 5);
         }
 
-        await cc(95);
+        await callback(95);
         let bytes = encoder.encode();
         switch (returnType) {
             case 0: {
                 bytes = new Uint8Array(bytes);
                 encoder.release();
-                await cc(100);
+                await callback(100);
                 return bytes;
             }
             case 1: {
                 let blob = new Blob([bytes], {type: 'image/webp'});
                 let size = bytes.length;
                 encoder.release();
-                await cc(100);
+                await callback(100);
                 return {blob, size};
             }
             case 2: {
@@ -113,7 +109,7 @@ const webpEncoder = {
                 let size = bytes.length;
                 encoder.release();
                 let url = URL.createObjectURL(blob);
-                await cc(100);
+                await callback(100);
                 return {url, size};
             }
             default: {
@@ -446,8 +442,9 @@ const App = {
             await this.$nextTick();
 
             try {
-                let {url, size} = await webpEncoder.encode(this.frames, progress => {
+                let {url, size} = await webpEncoder.encode(this.frames, async progress => {
                     this.progress = progress;
+                    await this.$nextTick();
                 }, this.fileOptions, webpEncoder.ENCODE_RET_URL);
                 this.webp = {src: url, size};
                 this.progress = 100;
