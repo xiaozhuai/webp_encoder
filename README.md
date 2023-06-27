@@ -49,7 +49,7 @@ int main() {
 ### Javascript
 
 ```js
-const webpEncoder = {
+const WebpEncoder = {
     ENCODE_RET_UINT8ARRAY: 0,
     ENCODE_RET_BLOB: 1,
     ENCODE_RET_URL: 2,
@@ -85,35 +85,45 @@ const webpEncoder = {
      *
      * @param frames            Array<{src: string, options: Object}>
      * @param fileOptions       Object
+     * @param callback          function(progress: number)
      * @param returnType        0: Uint8Array
      *                          1: {blob, size}
      *                          2: {url, size}
      * @returns {Promise<Uint8Array|{blob: Blob, size: number}|{url: string, size: number}>}
      */
-    async encode(frames, fileOptions = {}, returnType = 0) {
+    async encode(frames, callback, fileOptions = {}, returnType = 0) {
+        await callback(0);
         if (!this._module) {
-            this._module = await WebpEncoder();
+            this._module = await WebpEncoderWasm();
         }
         let encoder = new this._module.WebpEncoder();
         encoder.init(fileOptions);
+        await callback(5);
 
+        let c = 0;
         for (let frame of frames) {
             let image = await this.loadImage(frame.src);
             let imageData = this.getImageData(image);
             let rgbaPixels = new Uint8Array(imageData.data.buffer);
             encoder.push(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
+            c++;
+            await callback(c / frames.length * 90 + 5);
         }
+
+        await callback(95);
         let bytes = encoder.encode();
         switch (returnType) {
             case 0: {
                 bytes = new Uint8Array(bytes);
                 encoder.release();
+                await callback(100);
                 return bytes;
             }
             case 1: {
                 let blob = new Blob([bytes], {type: 'image/webp'});
                 let size = bytes.length;
                 encoder.release();
+                await callback(100);
                 return {blob, size};
             }
             case 2: {
@@ -121,6 +131,7 @@ const webpEncoder = {
                 let size = bytes.length;
                 encoder.release();
                 let url = URL.createObjectURL(blob);
+                await callback(100);
                 return {url, size};
             }
             default: {
@@ -167,7 +178,9 @@ async function main() {
     /**
      * Got webp blob url and length in byte
      */
-    let {url, size} = webpEncoder.encode(frames, fileOptions, webpEncoder.ENCODE_RET_URL);
+    let {url, size} = WebpEncoder.encode(frames, progress => {
+        console.log(`progress: ${progress}%`);
+    }, fileOptions, webpEncoder.ENCODE_RET_URL);
 }
 
 main();
