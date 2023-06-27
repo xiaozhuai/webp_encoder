@@ -19,7 +19,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     target_link_libraries(${PROJECT_NAME} PRIVATE embind)
     target_compile_options(${PROJECT_NAME} PRIVATE)
     target_link_options(${PROJECT_NAME} PRIVATE
-            -sEXPORT_NAME="WebpEncoder"
+            -sEXPORT_NAME="WebpEncoderWasm"
             -sALLOW_MEMORY_GROWTH=1
             -sNO_FILESYSTEM=1
             -sASSERTIONS=1

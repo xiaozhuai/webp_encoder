@@ -27,7 +27,7 @@ Vue.directive('lazy-image', {
     },
 });
 
-const webpEncoder = {
+const WebpEncoder = {
     ENCODE_RET_UINT8ARRAY: 0,
     ENCODE_RET_BLOB: 1,
     ENCODE_RET_URL: 2,
@@ -72,7 +72,7 @@ const webpEncoder = {
     async encode(frames, callback, fileOptions = {}, returnType = 0) {
         await callback(0);
         if (!this._module) {
-            this._module = await WebpEncoder();
+            this._module = await WebpEncoderWasm();
         }
         let encoder = new this._module.WebpEncoder();
         encoder.init(fileOptions);
@@ -442,10 +442,10 @@ const App = {
             await this.$nextTick();
 
             try {
-                let {url, size} = await webpEncoder.encode(this.frames, async progress => {
+                let {url, size} = await WebpEncoder.encode(this.frames, async progress => {
                     this.progress = progress;
                     await this.$nextTick();
-                }, this.fileOptions, webpEncoder.ENCODE_RET_URL);
+                }, this.fileOptions, WebpEncoder.ENCODE_RET_URL);
                 this.webp = {src: url, size};
                 this.progress = 100;
                 this.loading = false;
