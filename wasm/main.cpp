@@ -33,8 +33,8 @@ static bool WebpEncoder_Init(WebpEncoder &self, const emscripten::val &options) 
 
 static inline void WebpEncoder_Release(WebpEncoder &self) { self.Release(); }
 
-static bool WebpEncoder_Push(
-    WebpEncoder &self, const emscripten::val &pixels, int width, int height, const emscripten::val &options) {
+static bool WebpEncoder_Push(WebpEncoder &self, const emscripten::val &pixels, int width, int height,
+                             const emscripten::val &options) {
     auto size = pixels["length"].as<size_t>();
     std::vector<uint8_t> native_pixels(size);
     emscripten::val memoryView{emscripten::typed_memory_view(native_pixels.size(), native_pixels.data())};

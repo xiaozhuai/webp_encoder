@@ -198,7 +198,9 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
     }
     finally { WebPPictureFree(&pic); };
 
+#if !defined(__wasm__)
     config.thread_level = 1;
+#endif
 
     config.lossless = 1;
     if (!handler_->anim_config.allow_mixed) {
