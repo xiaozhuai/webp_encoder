@@ -24,7 +24,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
             -sNO_FILESYSTEM=1
             -sASSERTIONS=1
             -sSINGLE_FILE=1
-            -sMODULARIZE=1)
+            -sMODULARIZE=1
+            -sASYNCIFY=1)
     add_custom_command(
             TARGET ${PROJECT_NAME}
             POST_BUILD

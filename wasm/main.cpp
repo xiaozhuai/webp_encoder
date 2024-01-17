@@ -3,9 +3,8 @@
 //
 
 #include <emscripten/bind.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/val.h>
-
-#include <iostream>
 
 #include "webp_encoder.hpp"
 
@@ -56,7 +55,9 @@ static bool WebpEncoder_Push(WebpEncoder &self, const emscripten::val &pixels, i
     if (options.hasOwnProperty("exact")) {
         o.exact = options["exact"].as<bool>();
     }
-    return self.Push(native_pixels.data(), width, height, o);
+    auto ret = self.Push(native_pixels.data(), width, height, o);
+    emscripten_sleep(0);
+    return ret;
 }
 
 static emscripten::val WebpEncoder_Encode(WebpEncoder &self) {

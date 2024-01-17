@@ -105,7 +105,7 @@ const WebpEncoder = {
             let image = await this.loadImage(frame.src);
             let imageData = this.getImageData(image);
             let rgbaPixels = new Uint8Array(imageData.data.buffer);
-            encoder.push(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
+            await encoder.push(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
             c++;
             await callback(c / frames.length * 90 + 5);
         }
