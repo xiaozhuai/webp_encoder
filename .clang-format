@@ -19,3 +19,4 @@ ObjCBlockIndentWidth: 4
 PointerAlignment: Right
 SpaceBeforeRangeBasedForLoopColon: true
 SpacesInContainerLiterals: false
+InsertNewlineAtEOF: true
