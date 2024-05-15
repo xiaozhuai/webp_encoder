@@ -5,9 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(WebP CONFIG REQUIRED)
 
-file(GLOB_RECURSE LIB_SOURCES "src/*.h" "src/*.hpp" "src/*.c" "src/*.cpp" "src/*.cc")
-file(GLOB_RECURSE CLI_SOURCES "cli/*.h" "cli/*.hpp" "cli/*.c" "cli/*.cpp" "cli/*.cc")
-file(GLOB_RECURSE WASM_SOURCES "wasm/*.h" "wasm/*.hpp" "wasm/*.c" "wasm/*.cpp" "wasm/*.cc")
+file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS "src/*.h" "src/*.hpp" "src/*.c" "src/*.cpp" "src/*.cc")
+file(GLOB_RECURSE CLI_SOURCES CONFIGURE_DEPENDS "cli/*.h" "cli/*.hpp" "cli/*.c" "cli/*.cpp" "cli/*.cc")
+file(GLOB_RECURSE WASM_SOURCES CONFIGURE_DEPENDS "wasm/*.h" "wasm/*.hpp" "wasm/*.c" "wasm/*.cpp" "wasm/*.cc")
 
 add_library(lib${PROJECT_NAME} STATIC ${LIB_SOURCES})
 target_include_directories(lib${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
