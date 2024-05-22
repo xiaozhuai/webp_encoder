@@ -17,6 +17,9 @@ JavaScriptQuotes: Single
 NamespaceIndentation: None
 ObjCBlockIndentWidth: 4
 PointerAlignment: Right
+DerivePointerAlignment: false
 SpaceBeforeRangeBasedForLoopColon: true
 SpacesInContainerLiterals: false
 InsertNewlineAtEOF: true
+UseTab: Never
+LineEnding: LF
