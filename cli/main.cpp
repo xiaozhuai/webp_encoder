@@ -9,21 +9,8 @@
 #include "webp_encoder.hpp"
 
 int main() {
-    WebpFileOptions file_options{
-        .minimize = true,
-        .loop = 0,
-        .kmax = 0,
-        .kmin = 0,
-        .mixed = true,
-    };
-
-    WebpFrameOptions frame_options{
-        .duration = 100,
-        .lossless = false,
-        .quality = 100.0f,
-        .method = 0,
-        .exact = false,
-    };
+    WebpFileOptions file_options{true, 0, 0, 0, true};
+    WebpFrameOptions frame_options{100, false, 100.0f, 0, false};
 
     WebpEncoder encoder;
     encoder.Init(file_options);

@@ -11,49 +11,12 @@
 #include <cstdio>
 #include <fstream>
 #include <functional>
+#include <memory>
 #include <utility>
 
-namespace _finally {
-
-template <class F>
-class FinalAction {
-public:
-    FinalAction(F f) noexcept : f_(std::move(f)), invoke_(true) {}
-
-    FinalAction(FinalAction &&other) noexcept : f_(std::move(other.f_)), invoke_(other.invoke_) {
-        other.invoke_ = false;
-    }
-
-    FinalAction(const FinalAction &) = delete;
-
-    FinalAction &operator=(const FinalAction &) = delete;
-
-    ~FinalAction() noexcept {
-        if (invoke_) f_();
-    }
-
-private:
-    F f_;
-    bool invoke_;
-};
-
-template <class F>
-inline FinalAction<F> final(const F &f) noexcept {
-    return FinalAction<F>(f);
-}
-
-template <class F>
-inline FinalAction<F> final(F &&f) noexcept {
-    return FinalAction<F>(std::forward<F>(f));
-}
-
-}  // namespace _finally
-
-#define _concat1(a, b)  a##b
-#define _concat2(a, b)  _concat1(a, b)
-#define _finally_object _concat2(_finally_object_, __COUNTER__)
-#define finally         _finally::FinalAction _finally_object = [&]()
-#define finally2(func)  _finally::FinalAction _finally_object = _finally::final(func)
+#if defined(_WIN32)
+#include <clocale>
+#endif
 
 #if defined(WEBP_ENCODER_NO_LOG)
 #define LOGD(fmt, ...)
@@ -86,7 +49,8 @@ static std::string StrFormat(const char *fmt, ...) {
     va_start(args, fmt);
 
 #if defined(_WIN32)
-    const int sz = _vscprintf_l(fmt, c_locale(), args);
+    _locale_t locale = _create_locale(LC_ALL, "C");
+    const int sz = _vscprintf_l(fmt, locale, args);
 #else
     const int sz = vsnprintf(nullptr, 0, fmt, args);
 #endif
@@ -94,11 +58,13 @@ static std::string StrFormat(const char *fmt, ...) {
     std::string output(sz, '\0');
 
 #if defined(_WIN32)
-    _vsnprintf_s_l(&output.at(0), output.size() + 1, output.size(), fmt, c_locale(), args);
+    _vsnprintf_s_l(&output.at(0), output.size() + 1, output.size(), fmt, locale, args);
+    _free_locale(locale);
 #else
     va_start(args, fmt);
     vsnprintf(&output.at(0), output.size() + 1, fmt, args);
 #endif
+
     va_end(args);
 
     return output;
@@ -112,7 +78,7 @@ static bool SetLoopCount(int loop_count, WebPData *const data) {
     if (mux == nullptr) {
         return false;
     }
-    finally { WebPMuxDelete(mux); };
+    std::unique_ptr<WebPMux, std::function<void(WebPMux *)>> _{mux, WebPMuxDelete};
 
     if ((WebPMuxGetFeatures(mux, &features) != WEBP_MUX_OK) || !(features & ANIMATION_FLAG)) {
         return false;
@@ -196,7 +162,7 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
         LOGE("Init image config failed");
         return false;
     }
-    finally { WebPPictureFree(&pic); };
+    std::unique_ptr<WebPPicture, std::function<void(WebPPicture *)>> _{&pic, WebPPictureFree};
 
 #if !defined(__wasm__)
     config.thread_level = 1;
