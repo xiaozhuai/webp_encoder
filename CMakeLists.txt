@@ -44,9 +44,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE lib${PROJECT_NAME})
 
 find_program(CLANG_FORMAT clang-format)
 if (CLANG_FORMAT)
+    list(APPEND ALL_SOURCES ${LIB_SOURCES} ${CLI_SOURCES} ${WASM_SOURCES})
     add_custom_target(
             format
-            COMMAND "${CLANG_FORMAT}" -i -verbose ${LIB_SOURCES} ${CLI_SOURCES} ${WASM_SOURCES}
+            COMMAND "${CLANG_FORMAT}" -i --verbose ${ALL_SOURCES}
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+    add_custom_target(
+            check-format
+            COMMAND "${CLANG_FORMAT}" --dry-run --Werror --verbose ${ALL_SOURCES}
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     )
 endif ()

@@ -1,0 +1,199 @@
+name: ci
+
+on:
+    push:
+        branches: [ master ]
+    pull_request:
+        branches: [ master ]
+
+jobs:
+    code-style:
+        runs-on: ubuntu-24.04
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+                with:
+                    submodules: recursive
+            -   name: Install dependencies
+                run: |
+                    sudo apt-get update
+                    sudo apt-get install -y clang-format-18
+                    sudo ln -s -f /usr/bin/clang-format-18 /usr/bin/clang-format
+            -   name: Check code style
+                run: |
+                    clang-format --dry-run --Werror --verbose cli/* src/* wasm/*
+
+    windows:
+        needs: code-style
+        runs-on: ${{ matrix.runner }}
+        strategy:
+            matrix:
+                runner:
+                    - windows-2019
+                    - windows-2022
+                target:
+                    -   preset: x64-windows-release
+                        triplet: x64-windows
+                        arch: amd64
+                    -   preset: x86-windows-release
+                        triplet: x86-windows
+                        arch: x86
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+                with:
+                    submodules: recursive
+            -   name: Checkout vcpkg
+                uses: actions/checkout@v4
+                with:
+                    repository: xiaozhuai/vcpkg
+                    submodules: recursive
+                    path: vcpkg
+            -   name: Install dependencies
+                shell: cmd
+                run: |
+                    cmd /k .\vcpkg\bootstrap-vcpkg.bat
+                    cmd /k .\vcpkg\vcpkg install --triplet ${{matrix.target.triplet}} --clean-after-build libwebp stb
+            -   uses: ilammy/msvc-dev-cmd@v1
+                with:
+                    arch: ${{ matrix.target.arch }}
+            -   name: Build
+                shell: cmd
+                run: |
+                    set VCPKG_ROOT=%CD%\vcpkg
+                    cmake --preset ${{matrix.target.preset}} -B build .
+                    cmake --build build --target all
+
+    macos:
+        needs: code-style
+        runs-on: ${{ matrix.runner }}
+        strategy:
+            matrix:
+                runner:
+                    - macos-12
+                    - macos-13
+                    - macos-14
+                target:
+                    -   preset: x64-macos-release
+                        triplet: x64-osx
+                    -   preset: arm64-macos-release
+                        triplet: arm64-osx
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+                with:
+                    submodules: recursive
+            -   name: Checkout vcpkg
+                uses: actions/checkout@v4
+                with:
+                    repository: xiaozhuai/vcpkg
+                    submodules: recursive
+                    path: vcpkg
+            -   name: Install dependencies
+                run: |
+                    ./vcpkg/bootstrap-vcpkg.sh
+                    ./vcpkg/vcpkg install --triplet ${{matrix.target.triplet}} --clean-after-build libwebp stb
+                    brew install ninja
+            -   name: Build
+                run: |
+                    export VCPKG_ROOT="$(pwd)/vcpkg"
+                    cmake --preset ${{matrix.target.preset}} -B build .
+                    cmake --build build --target all
+
+    linux:
+        needs: code-style
+        runs-on: ${{ matrix.runner }}
+        strategy:
+            matrix:
+                runner:
+                    - ubuntu-20.04
+                    - ubuntu-22.04
+                    - ubuntu-24.04
+                target:
+                    -   preset: x64-linux-release
+                        triplet: x64-linux
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+                with:
+                    submodules: recursive
+            -   name: Checkout vcpkg
+                uses: actions/checkout@v4
+                with:
+                    repository: xiaozhuai/vcpkg
+                    submodules: recursive
+                    path: vcpkg
+            -   name: Install dependencies
+                run: |
+                    ./vcpkg/bootstrap-vcpkg.sh
+                    ./vcpkg/vcpkg install --triplet ${{matrix.target.triplet}} --clean-after-build libwebp stb
+                    sudo apt-get install -y ninja-build
+            -   name: Build
+                run: |
+                    export VCPKG_ROOT="$(pwd)/vcpkg"
+                    cmake --preset ${{matrix.target.preset}} -B build .
+                    cmake --build build --target all
+
+    emscripten:
+        needs: code-style
+        runs-on: ${{ matrix.runner }}
+        strategy:
+            matrix:
+                runner:
+                    - ubuntu-24.04
+                target:
+                    -   preset: wasm32-emscripten-release
+                        triplet: wasm32-emscripten
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+                with:
+                    submodules: recursive
+            -   name: Checkout emsdk
+                uses: actions/checkout@v4
+                with:
+                    submodules: recursive
+                    repository: emscripten-core/emsdk
+                    path: emsdk
+            -   name: Install emsdk
+                run: |
+                    ./emsdk/emsdk install latest
+                    ./emsdk/emsdk activate latest
+            -   name: Checkout vcpkg
+                uses: actions/checkout@v4
+                with:
+                    repository: xiaozhuai/vcpkg
+                    submodules: recursive
+                    path: vcpkg
+            -   name: Install dependencies
+                run: |
+                    export EMSDK="$(pwd)/emsdk"
+                    ./vcpkg/bootstrap-vcpkg.sh
+                    ./vcpkg/vcpkg install --triplet ${{matrix.target.triplet}} --clean-after-build libwebp stb
+                    sudo apt-get install -y ninja-build
+            -   name: Build
+                run: |
+                    export EMSDK="$(pwd)/emsdk"
+                    export VCPKG_ROOT="$(pwd)/vcpkg"
+                    cmake --preset ${{matrix.target.preset}} -B build .
+                    cmake --build build --target all
+            -   name: Upload artifact
+                uses: actions/upload-pages-artifact@v3
+                with:
+                    path: 'docs'
+
+    pages:
+        needs: emscripten
+        runs-on: ubuntu-latest
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            -   name: Setup Pages
+                uses: actions/configure-pages@v5
+            -   name: Deploy Pages
+                id: deployment
+                uses: actions/deploy-pages@v4
