@@ -1,0 +1,63 @@
+name: pages
+
+on:
+    push:
+        branches: [ master ]
+
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+concurrency:
+    group: "pages"
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        runs-on: ubuntu-24.04
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+                with:
+                    submodules: recursive
+            -   name: Checkout emsdk
+                uses: actions/checkout@v4
+                with:
+                    submodules: recursive
+                    repository: emscripten-core/emsdk
+                    path: emsdk
+            -   name: Install emsdk
+                run: |
+                    ./emsdk/emsdk install latest
+                    ./emsdk/emsdk activate latest
+            -   name: Checkout vcpkg
+                uses: actions/checkout@v4
+                with:
+                    repository: xiaozhuai/vcpkg
+                    submodules: recursive
+                    path: vcpkg
+            -   name: Install dependencies
+                run: |
+                    export EMSDK="$(pwd)/emsdk"
+                    ./vcpkg/bootstrap-vcpkg.sh
+                    ./vcpkg/vcpkg install --triplet wasm32-emscripten --clean-after-build libwebp stb
+                    sudo apt-get install -y ninja-build
+            -   name: Build
+                run: |
+                    export EMSDK="$(pwd)/emsdk"
+                    export VCPKG_ROOT="$(pwd)/vcpkg"
+                    cmake --preset wasm32-emscripten-release -B build .
+                    cmake --build build --target all
+            -   name: Setup Pages
+                uses: actions/configure-pages@v5
+            -   name: Upload Pages
+                uses: actions/upload-pages-artifact@v3
+                with:
+                    path: 'docs'
+            -   name: Deploy Pages
+                id: deployment
+                uses: actions/deploy-pages@v4

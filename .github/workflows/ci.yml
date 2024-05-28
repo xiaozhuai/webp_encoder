@@ -177,23 +177,3 @@ jobs:
                     export VCPKG_ROOT="$(pwd)/vcpkg"
                     cmake --preset ${{matrix.target.preset}} -B build .
                     cmake --build build --target all
-            -   name: Upload artifact
-                uses: actions/upload-pages-artifact@v3
-                with:
-                    path: 'docs'
-
-    pages:
-        needs: emscripten
-        runs-on: ubuntu-latest
-        permissions:
-            pages: write
-            id-token: write
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
-        steps:
-            -   name: Setup Pages
-                uses: actions/configure-pages@v5
-            -   name: Deploy Pages
-                id: deployment
-                uses: actions/deploy-pages@v4
