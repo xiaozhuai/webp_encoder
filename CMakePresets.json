@@ -151,14 +151,14 @@
             "name": "target-android",
             "hidden": true,
             "environment": {
-                "ANDROID_NDK_HOME": "$env{ANDROID_HOME}/ndk/26.3.11579264"
+                "ANDROID_NDK_HOME": "$env{ANDROID_HOME}/ndk/18.1.5063045"
             },
             "cacheVariables": {
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": {
                     "type": "FILEPATH",
                     "value": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake"
                 },
-                "ANDROID_STL": "c++_static",
+                "ANDROID_STL": "c++_shared",
                 "ANDROID_PLATFORM": "android-21",
                 "ANDROID_ARM_NEON": {
                     "type": "BOOL",
@@ -196,7 +196,7 @@
             "inherits": "host-macos",
             "cacheVariables": {
                 "CMAKE_SYSTEM_NAME": "iOS",
-                "CMAKE_OSX_DEPLOYMENT_TARGET": "11.0"
+                "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0"
             }
         },
         {
