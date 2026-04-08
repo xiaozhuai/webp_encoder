@@ -7,159 +7,78 @@
 #include <webp/encode.h>
 #include <webp/mux.h>
 
-#include <cstdarg>
-#include <cstdio>
 #include <fstream>
 #include <functional>
 #include <memory>
 #include <utility>
 
-#if defined(_WIN32)
-#include <clocale>
-#endif
-
-#if defined(WEBP_ENCODER_NO_LOG)
-#define LOGD(fmt, ...)
-#define LOGE(fmt, ...) \
-    do {               \
-        abort();       \
-    } while (0)
+#if !defined(WEBP_ENCODER_DISABLE_EXCEPTION)
+#if defined(__EMSCRIPTEN__)
+EM_JS(void, throw_js_error, (const char *msg), { throw new Error(UTF8ToString(msg)); });
+void throw_js_error(const std::string &msg) { throw_js_error(msg.c_str()); }
+#define WEBP_ENCODER_THROW(str) throw_js_error(str)
 #else
-#define LOGD(fmt, ...)                   \
-    do {                                 \
-        printf(fmt "\n", ##__VA_ARGS__); \
-    } while (0)
-#define LOGE(fmt, ...)                             \
-    do {                                           \
-        printf("Error: " fmt "\n", ##__VA_ARGS__); \
-        abort();                                   \
-    } while (0)
+#define WEBP_ENCODER_THROW(str) throw std::runtime_error(str)
+#endif
+#else
+#define WEBP_ENCODER_THROW(str)
 #endif
 
-struct WebpHandler {
-    WebPAnimEncoder *enc = nullptr;
-    WebPAnimEncoderOptions anim_config;
-    WebPData data;
+namespace WebpEncoder {
+
+struct WebpEncoder::Impl {
+    std::unique_ptr<WebPAnimEncoder, std::function<void(WebPAnimEncoder *)>> enc;
+    WebPAnimEncoderOptions anim_config{};
 };
 
-#define handler_ (reinterpret_cast<WebpHandler *>(raw_handler_))
+WebpEncoder::WebpEncoder() = default;
 
-static std::string StrFormat(const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
+WebpEncoder::~WebpEncoder() = default;
 
-#if defined(_WIN32)
-    _locale_t locale = _create_locale(LC_ALL, "C");
-    const int sz = _vscprintf_l(fmt, locale, args);
-#else
-    const int sz = vsnprintf(nullptr, 0, fmt, args);
-#endif
+bool WebpEncoder::Init(const FileOptions &options) {
+    impl_ = std::make_unique<Impl>();
 
-    std::string output(sz, '\0');
-
-#if defined(_WIN32)
-    _vsnprintf_s_l(&output.at(0), output.size() + 1, output.size(), fmt, locale, args);
-    _free_locale(locale);
-#else
-    va_start(args, fmt);
-    vsnprintf(&output.at(0), output.size() + 1, fmt, args);
-#endif
-
-    va_end(args);
-
-    return output;
-}
-
-static bool SetLoopCount(int loop_count, WebPData *const data) {
-    bool ok;
-    uint32_t features;
-    WebPMuxAnimParams params;
-    WebPMux *mux = WebPMuxCreate(data, 1);
-    if (mux == nullptr) {
-        return false;
-    }
-    std::unique_ptr<WebPMux, std::function<void(WebPMux *)>> _{mux, WebPMuxDelete};
-
-    if ((WebPMuxGetFeatures(mux, &features) != WEBP_MUX_OK) || !(features & ANIMATION_FLAG)) {
+    if (!WebPAnimEncoderOptionsInit(&impl_->anim_config)) {
+        WEBP_ENCODER_THROW("WebPAnimEncoderOptionsInit failed");
         return false;
     }
 
-    if (WebPMuxGetAnimationParams(mux, &params) != WEBP_MUX_OK) {
-        return false;
-    }
-
-    params.loop_count = loop_count;
-    if (WebPMuxSetAnimationParams(mux, &params) != WEBP_MUX_OK) {
-        return false;
-    }
-
-    WebPDataClear(data);
-
-    if (WebPMuxAssemble(mux, data) != WEBP_MUX_OK) {
-        return false;
-    }
-
-    return ok;
-}
-
-std::string WebpFileOptions::to_string() const {
-    return StrFormat("WebpFileOptions{loop: %d, kmin: %d, kmax: %d, minimize: %d, mixed: %d}", loop, kmin, kmax,
-                     minimize, mixed);
-}
-
-std::string WebpFrameOptions::to_string() const {
-    return StrFormat("WebpFrameOptions{duration: %d, quality: %.1f, method: %d, lossless: %d, exact: %d}", duration,
-                     quality, method, lossless, exact);
-}
-
-WebpEncoder::~WebpEncoder() { Release(); }
-
-void WebpEncoder::Release() {
-    WebPDataClear(&handler_->data);
-    WebPAnimEncoderDelete(handler_->enc);
-    handler_->enc = nullptr;
-}
-
-bool WebpEncoder::Init(const WebpFileOptions &options) {
-    raw_handler_ = new WebpHandler();
-
-    WebPDataInit(&handler_->data);
-    if (!WebPAnimEncoderOptionsInit(&handler_->anim_config)) {
-        Release();
-        LOGE("Init encoder options failed");
-        return false;
-    }
-
-    loop_ = options.loop;
-    handler_->anim_config.minimize_size = options.minimize;
-    handler_->anim_config.kmax = options.kmax;
-    handler_->anim_config.kmin = options.kmin;
-    handler_->anim_config.allow_mixed = options.mixed;
+    impl_->anim_config.anim_params.loop_count = options.loop;
+    impl_->anim_config.minimize_size = options.minimize;
+    impl_->anim_config.kmax = options.kmax;
+    impl_->anim_config.kmin = options.kmin;
+    impl_->anim_config.allow_mixed = options.mixed;
 
     return true;
 }
 
-bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOptions &options) {
-    if (handler_->enc == nullptr) {
+bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const FrameOptions &options) {
+    if (impl_->enc == nullptr) {
         width_ = width;
         height_ = height;
-        handler_->enc = WebPAnimEncoderNew(width, height, &handler_->anim_config);
-        if (handler_->enc == nullptr) {
-            LOGE("Init encoder failed");
+        impl_->enc = std::unique_ptr<WebPAnimEncoder, std::function<void(WebPAnimEncoder *)>>(
+            WebPAnimEncoderNew(width, height, &impl_->anim_config), WebPAnimEncoderDelete);
+        if (!impl_->enc) {
+            WEBP_ENCODER_THROW("WebPAnimEncoderNew failed");
             return false;
         }
     }
 
     if (width != width_ || height != height_) {
-        LOGE("Image size mismatch");
+        WEBP_ENCODER_THROW("Image size mismatch");
         return false;
     }
 
     WebPConfig config;
     WebPPicture pic;
 
-    if (!WebPConfigInit(&config) || !WebPPictureInit(&pic)) {
-        LOGE("Init image config failed");
+    if (!WebPConfigInit(&config)) {
+        WEBP_ENCODER_THROW("WebPConfigInit failed");
+        return false;
+    }
+
+    if (!WebPPictureInit(&pic)) {
+        WEBP_ENCODER_THROW("WebPPictureInit failed");
         return false;
     }
     std::unique_ptr<WebPPicture, std::function<void(WebPPicture *)>> _{&pic, WebPPictureFree};
@@ -169,7 +88,7 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
 #endif
 
     config.lossless = 1;
-    if (!handler_->anim_config.allow_mixed) {
+    if (!impl_->anim_config.allow_mixed) {
         config.lossless = options.lossless;
     }
     config.quality = options.quality;
@@ -180,7 +99,7 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
     // #endif
 
     if (!WebPValidateConfig(&config)) {
-        LOGE("Invalid image config");
+        WEBP_ENCODER_THROW("WebPValidateConfig config");
         return false;
     }
 
@@ -189,12 +108,12 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
     pic.height = height;
 
     if (!WebPPictureImportRGBA(&pic, pixels, width * 4)) {
-        LOGE("Import image data failed");
+        WEBP_ENCODER_THROW("WebPPictureImportRGBA failed");
         return false;
     }
 
-    if (!WebPAnimEncoderAdd(handler_->enc, &pic, timestamp_ms_, &config)) {
-        LOGE("Encoder add frame failed, %d", pic.error_code);
+    if (!WebPAnimEncoderAdd(impl_->enc.get(), &pic, timestamp_ms_, &config)) {
+        WEBP_ENCODER_THROW("WebPAnimEncoderAdd failed, " + std::to_string(pic.error_code));
         return false;
     }
     timestamp_ms_ += options.duration;
@@ -202,24 +121,49 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const WebpFrameOp
     return true;
 }
 
-const uint8_t *WebpEncoder::Encode(size_t *size) {
-    *size = 0;
-    if (!WebPAnimEncoderAdd(handler_->enc, nullptr, timestamp_ms_, nullptr) ||
-        !WebPAnimEncoderAssemble(handler_->enc, &handler_->data)) {
-        LOGE("Encode assemble failed");
-        return nullptr;
+WebpEncoder::EncodedData WebpEncoder::Encode() {
+    if (!WebPAnimEncoderAdd(impl_->enc.get(), nullptr, timestamp_ms_, nullptr)) {
+        WEBP_ENCODER_THROW("WebPAnimEncoderAdd failed");
+        return {};
     }
 
-    SetLoopCount(loop_, &handler_->data);
+    WebPData webp_data;
+    WebPDataInit(&webp_data);
 
-    *size = handler_->data.size;
-    return handler_->data.bytes;
+    if (!WebPAnimEncoderAssemble(impl_->enc.get(), &webp_data)) {
+        WEBP_ENCODER_THROW("WebPAnimEncoderAssemble failed");
+        return {};
+    }
+
+    std::unique_ptr<WebPMux, std::function<void(WebPMux *)>> mux{WebPMuxCreate(&webp_data, 0), WebPMuxDelete};
+    if (mux == nullptr) {
+        WEBP_ENCODER_THROW("WebPMuxCreate failed");
+        return {};
+    }
+
+    if (WebPMuxAssemble(mux.get(), &webp_data) != WEBP_MUX_OK) {
+        WEBP_ENCODER_THROW("WebPMuxAssemble failed");
+        return {};
+    }
+
+#if !defined(__EMSCRIPTEN__)
+    return {webp_data.bytes, webp_data.bytes + webp_data.size};
+#else
+    emscripten::val Uint8Array = emscripten::val::global("Uint8Array");
+    emscripten::val arr = Uint8Array.new_(webp_data.size);
+    emscripten::val view = emscripten::val(emscripten::typed_memory_view(webp_data.size, webp_data.bytes));
+    arr.call<void>("set", view);
+    return arr;
+#endif
 }
 
+#if !defined(__EMSCRIPTEN__)
 void WebpEncoder::Write(const std::string &file) {
-    size_t size;
-    const auto *bytes = Encode(&size);
+    auto encoded_data = Encode();
     std::ofstream out(file, std::ios_base::out | std::ios_base::binary);
-    out.write(reinterpret_cast<const char *>(bytes), static_cast<std::streamsize>(size));
+    out.write(reinterpret_cast<const char *>(encoded_data.data()), static_cast<std::streamsize>(encoded_data.size()));
     out.close();
 }
+#endif
+
+}  // namespace WebpEncoder

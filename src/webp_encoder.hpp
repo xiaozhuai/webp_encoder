@@ -4,10 +4,18 @@
 
 #pragma once
 
-#include <cstdint>
+#include <memory>
 #include <string>
+#include <vector>
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/bind.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/val.h>
+#endif
 
-struct WebpFileOptions {
+namespace WebpEncoder {
+
+struct FileOptions {
     /**
      * If true, minimize the output size (slow). Implicitly
      * disables key-frame insertion.
@@ -15,7 +23,7 @@ struct WebpFileOptions {
     bool minimize = true;
 
     /**
-     * loop count (default: 0, = infinite loop)
+     * loop count (default to 0 stands for infinite loop)
      */
     int loop = 0;
 
@@ -36,11 +44,9 @@ struct WebpFileOptions {
      * If true, use mixed compression mode; may choose
      */
     bool mixed = true;
-
-    [[nodiscard]] std::string to_string() const;
 };
 
-struct WebpFrameOptions {
+struct FrameOptions {
     /**
      * timestamp of this frame in milliseconds.
      */
@@ -71,13 +77,11 @@ struct WebpFrameOptions {
      * RGB information for better compression.
      */
     bool exact = false;
-
-    [[nodiscard]] std::string to_string() const;
 };
 
-class WebpEncoder {
+class WebpEncoder final {
 public:
-    WebpEncoder() = default;
+    WebpEncoder();
 
     ~WebpEncoder();
 
@@ -87,12 +91,7 @@ public:
      * @param options       Webp file options
      * @return
      */
-    bool Init(const WebpFileOptions &options);
-
-    /**
-     * Release all internal resources
-     */
-    void Release();
+    bool Init(const FileOptions &options);
 
     /**
      * push a webp frame
@@ -103,27 +102,30 @@ public:
      * @param options       Frame options
      * @return
      */
-    bool Push(uint8_t *pixels, int width, int height, const WebpFrameOptions &options);
+    bool Push(uint8_t *pixels, int width, int height, const FrameOptions &options);
 
-    /**
-     * Return webp bytes
-     *
-     * @param size          Bytes length
-     * @return              Webp bytes
-     */
-    const uint8_t *Encode(size_t *size);
+#if !defined(__EMSCRIPTEN__)
+    using EncodedData = std::vector<uint8_t>;
+#else
+    using EncodedData = emscripten::val;
+#endif
+    [[nodiscard]] EncodedData Encode();
 
+#if !defined(__EMSCRIPTEN__)
     /**
      * Write a webp file
      *
      * @param file          File path
      */
     void Write(const std::string &file);
+#endif
 
 private:
     int width_ = -1;
     int height_ = -1;
-    int loop_ = 0;
     int timestamp_ms_ = 0;
-    void *raw_handler_ = nullptr;
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
+
+}  // namespace WebpEncoder

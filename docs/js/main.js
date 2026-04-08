@@ -27,98 +27,6 @@ Vue.directive('lazy-image', {
     },
 });
 
-const WebpEncoder = {
-    ENCODE_RET_UINT8ARRAY: 0,
-    ENCODE_RET_BLOB: 1,
-    ENCODE_RET_URL: 2,
-    _module: null,
-    _getImageDataCanvas: null,
-    _getImageDataCanvasCtx: null,
-    async loadImage(url) {
-        const image = new Image();
-        await new Promise((resolve, reject) => {
-            image.onload = resolve;
-            image.onerror = () => {
-                reject(new Error(`Error load image ${url}`));
-            };
-            image.src = url;
-        });
-        return image;
-    },
-    getImageData(image) {
-        if (!this._getImageDataCanvas) {
-            this._getImageDataCanvas = document.createElement('canvas');
-            this._getImageDataCanvasCtx = this._getImageDataCanvas.getContext('2d', {
-                willReadFrequently: true,
-            });
-        }
-        let canvas = this._getImageDataCanvas;
-        let context = this._getImageDataCanvasCtx;
-        canvas.width = image.naturalWidth;
-        canvas.height = image.naturalHeight;
-        context.drawImage(image, 0, 0);
-        return context.getImageData(0, 0, image.naturalWidth, image.naturalHeight);
-    },
-    /**
-     *
-     * @param frames            Array<{src: string, options: Object}>
-     * @param fileOptions       Object
-     * @param callback          function(progress: number)
-     * @param returnType        0: Uint8Array
-     *                          1: {blob, size}
-     *                          2: {url, size}
-     * @returns {Promise<Uint8Array|{blob: Blob, size: number}|{url: string, size: number}>}
-     */
-    async encode(frames, callback, fileOptions = {}, returnType = 0) {
-        await callback(0);
-        if (!this._module) {
-            this._module = await WebpEncoderWasm();
-        }
-        let encoder = new this._module.WebpEncoder();
-        encoder.init(fileOptions);
-        await callback(5);
-
-        let c = 0;
-        for (let frame of frames) {
-            let image = await this.loadImage(frame.src);
-            let imageData = this.getImageData(image);
-            let rgbaPixels = new Uint8Array(imageData.data.buffer);
-            await encoder.push(rgbaPixels, image.naturalWidth, image.naturalHeight, frame.options);
-            c++;
-            await callback(c / frames.length * 90 + 5);
-        }
-
-        await callback(95);
-        let bytes = encoder.encode();
-        switch (returnType) {
-            case 0: {
-                bytes = new Uint8Array(bytes);
-                encoder.release();
-                await callback(100);
-                return bytes;
-            }
-            case 1: {
-                let blob = new Blob([bytes], {type: 'image/webp'});
-                let size = bytes.length;
-                encoder.release();
-                await callback(100);
-                return {blob, size};
-            }
-            case 2: {
-                let blob = new Blob([bytes], {type: 'image/webp'});
-                let size = bytes.length;
-                encoder.release();
-                let url = URL.createObjectURL(blob);
-                await callback(100);
-                return {url, size};
-            }
-            default: {
-                throw new Error(`Invalid return type ${returnType}`)
-            }
-        }
-    },
-}
-
 const ImageFrame = {
     template: `
         <div class="image-frame">
@@ -181,6 +89,49 @@ const ImageFrame = {
 };
 Vue.component('ImageFrame', ImageFrame);
 
+function createWebpWorker() {
+    const worker = new Worker('./js/webp_encoder_worker.js');
+    let id = 0;
+    const callbacks = new Map();
+
+    worker.onmessage = (e) => {
+        const {id, result, error} = e.data;
+        const cb = callbacks.get(id);
+        if (!cb) return;
+        callbacks.delete(id);
+        if (error) cb.reject(error);
+        else cb.resolve(result);
+    };
+
+    function call(type, payload, transfer = []) {
+        return new Promise((resolve, reject) => {
+            const _id = id++;
+            callbacks.set(_id, {resolve, reject});
+            worker.postMessage(
+                {id: _id, type, payload},
+                transfer
+            );
+        });
+    }
+
+    return Promise.resolve({
+        init: (options) => call('init', {options}),
+        push: (pixels, width, height, options) =>
+            call(
+                'push',
+                {
+                    pixels: pixels.buffer,
+                    width,
+                    height,
+                    options
+                },
+                [pixels.buffer]
+            ),
+        encode: () => call('encode', {}),
+        terminate: () => worker.terminate()
+    });
+}
+
 const App = {
     template: `
         <div id="app"
@@ -222,7 +173,7 @@ const App = {
                 </div>
                 <div class="control-panel">
                     <div class="title">Batch Frame Options</div>
-                    <el-form label-width="100px" label-position="left" size="mini">
+                    <el-form label-width="120px" label-position="left" size="mini">
                         <el-form-item label="Duration (ms)">
                             <el-input-number 
                                 v-model="batchFrameOptions.duration"
@@ -233,7 +184,7 @@ const App = {
                                 :type="batchFrameOptionsChanged.duration ? 'danger' : ''"
                                 @click="batchChangeFrameOption('duration')"/>
                         </el-form-item>
-                        <el-form-item label="Quality">
+                        <el-form-item label="Quality (0~100)">
                             <el-input-number
                                 v-model="batchFrameOptions.quality"
                                 :min="0" :max="100" :step="0.1"
@@ -243,7 +194,7 @@ const App = {
                                 :type="batchFrameOptionsChanged.quality ? 'danger' : ''"
                                 @click="batchChangeFrameOption('quality')"/>
                         </el-form-item>
-                        <el-form-item label="Method">
+                        <el-form-item label="Method (0~6)">
                             <el-input-number 
                                 v-model="batchFrameOptions.method"
                                 :min="0" :max="6" :step="1"
@@ -330,6 +281,8 @@ const App = {
                 exact: false,
             },
             frames: [],
+            getImageDataCanvas: null,
+            getImageDataCanvasCtx: null,
             webp: {
                 src: '',
                 size: 0,
@@ -428,6 +381,31 @@ const App = {
                 size: 0,
             };
         },
+        async loadImage(url) {
+            const image = new Image();
+            await new Promise((resolve, reject) => {
+                image.onload = resolve;
+                image.onerror = () => {
+                    reject(new Error(`Error load image ${url}`));
+                };
+                image.src = url;
+            });
+            return image;
+        },
+        getImageData(image) {
+            if (!this.getImageDataCanvas) {
+                this.getImageDataCanvas = document.createElement('canvas');
+                this.getImageDataCanvasCtx = this.getImageDataCanvas.getContext('2d', {
+                    willReadFrequently: true,
+                });
+            }
+            let canvas = this.getImageDataCanvas;
+            let context = this.getImageDataCanvasCtx;
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            context.drawImage(image, 0, 0);
+            return context.getImageData(0, 0, image.naturalWidth, image.naturalHeight);
+        },
         async genWebp() {
             if (this.frames.length === 0) {
                 this.$message.error('No frames, drag and drop image frames to continue');
@@ -439,18 +417,30 @@ const App = {
                 src: '',
                 size: 0,
             };
-            await this.$nextTick();
 
             try {
-                let {url, size} = await WebpEncoder.encode(this.frames, progress => {
-                    this.progress = progress;
-                }, this.fileOptions, WebpEncoder.ENCODE_RET_URL);
+                const encoder = await createWebpWorker();
+                await encoder.init(this.fileOptions);
+                this.progress = 5;
+                for (let i = 0; i < this.frames.length; ++i) {
+                    const frame = this.frames[i];
+                    const image = await this.loadImage(frame.src);
+                    const imageData = this.getImageData(image);
+                    const pixels = new Uint8Array(imageData.data.buffer);
+                    await encoder.push(pixels, image.naturalWidth, image.naturalHeight, frame.options);
+                    this.progress = 5 + 90 / this.frames.length * (i + 1);
+                }
+                this.progress = 95;
+                const bytes = await encoder.encode();
+                const blob = new Blob([bytes], {type: 'image/webp'});
+                const size = bytes.length;
+                const url = URL.createObjectURL(blob);
                 this.webp = {src: url, size};
                 this.progress = 100;
                 this.loading = false;
             } catch (e) {
                 console.error(e);
-                this.$message.error('Encode webp failed! Please check logs in console!');
+                this.$message.error(`Encode webp failed! ${e.message}`);
                 this.progress = 0;
                 this.loading = false;
             }

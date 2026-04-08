@@ -10,8 +10,8 @@
 
 int main() { return 0; }
 
-static bool WebpEncoder_Init(WebpEncoder &self, const emscripten::val &options) {
-    WebpFileOptions o;
+static bool WebpEncoder_Init(WebpEncoder::WebpEncoder &self, const emscripten::val &options) {
+    WebpEncoder::FileOptions o;
     if (options.hasOwnProperty("minimize")) {
         o.minimize = options["minimize"].as<bool>();
     }
@@ -30,16 +30,14 @@ static bool WebpEncoder_Init(WebpEncoder &self, const emscripten::val &options) 
     return self.Init(o);
 }
 
-static inline void WebpEncoder_Release(WebpEncoder &self) { self.Release(); }
-
-static bool WebpEncoder_Push(WebpEncoder &self, const emscripten::val &pixels, int width, int height,
+static bool WebpEncoder_Push(WebpEncoder::WebpEncoder &self, const emscripten::val &pixels, int width, int height,
                              const emscripten::val &options) {
     auto size = pixels["length"].as<size_t>();
     std::vector<uint8_t> native_pixels(size);
     emscripten::val memoryView{emscripten::typed_memory_view(native_pixels.size(), native_pixels.data())};
     memoryView.call<void>("set", pixels);
 
-    WebpFrameOptions o;
+    WebpEncoder::FrameOptions o;
     if (options.hasOwnProperty("duration")) {
         o.duration = options["duration"].as<int>();
     }
@@ -60,17 +58,12 @@ static bool WebpEncoder_Push(WebpEncoder &self, const emscripten::val &pixels, i
     return ret;
 }
 
-static emscripten::val WebpEncoder_Encode(WebpEncoder &self) {
-    size_t size;
-    const uint8_t *data = self.Encode(&size);
-    return emscripten::val(emscripten::typed_memory_view(size, data));
-}
+static emscripten::val WebpEncoder_Encode(WebpEncoder::WebpEncoder &self) { return self.Encode(); }
 
 EMSCRIPTEN_BINDINGS(WebpEncoder) {
-    emscripten::class_<WebpEncoder>("WebpEncoder")
+    emscripten::class_<WebpEncoder::WebpEncoder>("WebpEncoder")
         .constructor()
         .function("init", &WebpEncoder_Init)
-        .function("release", &WebpEncoder_Release)
         .function("push", &WebpEncoder_Push)
         .function("encode", &WebpEncoder_Encode);
 }
