@@ -100,7 +100,6 @@ jobs:
         run: |
           ./vcpkg/bootstrap-vcpkg.sh
           ./vcpkg/vcpkg install --triplet ${{matrix.target.triplet}} --clean-after-build libwebp stb
-          brew install ninja
       - name: Build
         run: |
           export VCPKG_ROOT="$(pwd)/vcpkg"
@@ -134,7 +133,6 @@ jobs:
         run: |
           ./vcpkg/bootstrap-vcpkg.sh
           ./vcpkg/vcpkg install --triplet ${{matrix.target.triplet}} --clean-after-build libwebp stb
-          sudo apt-get install -y ninja-build
       - name: Build
         run: |
           export VCPKG_ROOT="$(pwd)/vcpkg"
@@ -178,7 +176,6 @@ jobs:
           export EMSDK="$(pwd)/emsdk"
           ./vcpkg/bootstrap-vcpkg.sh
           ./vcpkg/vcpkg install --triplet ${{matrix.target.triplet}} --clean-after-build libwebp stb
-          sudo apt-get install -y ninja-build
       - name: Build
         run: |
           export EMSDK="$(pwd)/emsdk"

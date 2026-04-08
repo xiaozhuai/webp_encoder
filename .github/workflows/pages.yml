@@ -45,7 +45,6 @@ jobs:
           export EMSDK="$(pwd)/emsdk"
           ./vcpkg/bootstrap-vcpkg.sh
           ./vcpkg/vcpkg install --triplet wasm32-emscripten --clean-after-build libwebp stb
-          sudo apt-get install -y ninja-build
       - name: Build
         run: |
           export EMSDK="$(pwd)/emsdk"
