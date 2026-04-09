@@ -106,9 +106,27 @@ html, body {
 .frames-wrap > .image-frame > .name {
     font-size: 14px;
     color: #303030;
-    line-height: 24px;
+    line-height: 28px;
     text-align: center;
     border: 1px solid #eeeeee;
+}
+
+.frames-wrap > .image-frame > .name .options-handle {
+    cursor: pointer;
+    color: #409eff;
+}
+
+.frames-wrap > .image-frame > .name .options-handle:hover {
+    color: #6eb2ff;
+}
+
+.frames-wrap > .image-frame > .name .options-handle-changed {
+    cursor: pointer;
+    color: #e6a23c;
+}
+
+.frames-wrap > .image-frame > .name .options-handle-changed:hover {
+    color: #e8af59;
 }
 
 .frames-wrap > .image-frame > .el-form {

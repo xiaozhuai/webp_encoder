@@ -31,37 +31,33 @@ const ImageFrame = {
     template: `
         <div class="image-frame">
             <img v-lazy-image="src">
-            <div class="name">{{name}}</div>
-            <el-form label-width="100px" label-position="left" size="mini">
-                <el-form-item label="Duration (ms)">
-                    <el-input-number
-                        :value="value.duration" 
-                        :step="1" 
-                        @change="change('duration', $event)"/>
-                </el-form-item>
-                <el-form-item label="Quality">
-                    <el-input-number 
-                        :value="value.quality"
-                        :min="0" :max="100" :step="0.1"
-                        @change="change('quality', $event)"/>
-                </el-form-item>
-                <el-form-item label="Method">
-                    <el-input-number
-                        :value="value.method"
-                        :min="0" :max="6" :step="1"
-                        @change="change('method', $event)"/>
-                </el-form-item>
-                <el-form-item label="Lossless">
-                    <el-switch
-                        :value="value.lossless" 
-                        @change="change('lossless', $event)"/>
-                </el-form-item>
-                <el-form-item label="Exact">
-                    <el-switch
-                        :value="value.exact" 
-                        @change="change('exact', $event)"/>
-                </el-form-item>
-            </el-form>
+            <div class="name">
+                {{name}}
+                <el-popover
+                    placement="bottom-start"
+                    title="Frame Options"
+                    width="280"
+                    trigger="click">
+                    <el-form label-width="108px" label-position="left" size="mini">
+                        <el-form-item label="Duration (ms)">
+                            <el-input-number :value="options.duration" :step="1" @change="change('duration', $event)" />
+                        </el-form-item>
+                        <el-form-item label="Quality">
+                            <el-input-number :value="options.quality" :min="0" :max="100" :step="0.1" @change="change('quality', $event)" />
+                        </el-form-item>
+                        <el-form-item label="Method">
+                            <el-input-number :value="options.method" :min="0" :max="6" :step="1" @change="change('method', $event)" />
+                        </el-form-item>
+                        <el-form-item label="Lossless">
+                            <el-switch :value="options.lossless" @change="change('lossless', $event)" />
+                        </el-form-item>
+                        <el-form-item label="Exact">
+                            <el-switch :value="options.exact" @change="change('exact', $event)" />
+                        </el-form-item>
+                    </el-form>
+                    <i slot="reference" class="el-icon-info options-handle" :class="{'options-handle-changed': valueChanged}"></i>
+                </el-popover>
+            </div>
         <div>
     `,
     props: {
@@ -76,7 +72,19 @@ const ImageFrame = {
         value: {
             type: Object,
             required: true,
-        }
+        },
+        globalOptions: {
+            type: Object,
+            required: true,
+        },
+    },
+    computed: {
+        options() {
+            return {...this.globalOptions, ...this.value};
+        },
+        valueChanged() {
+            return Object.keys(this.value).length > 0;
+        },
     },
     methods: {
         change(key, value) {
@@ -139,88 +147,49 @@ const App = {
             <div class="top-panel">
                 <div class="control-panel">
                     <div class="title">File Options</div>
-                    <el-form label-width="80px" label-position="left" size="mini">
+                    <el-form label-width="108px" label-position="left" size="mini">
                         <el-form-item label="Loop">
-                            <el-input-number
-                                v-model="fileOptions.loop"
-                                :step="1" :min="0"/>
+                            <el-input-number v-model="fileOptions.loop" :step="1" :min="0" />
                         </el-form-item>
                         <el-form-item label="Kmin">
-                            <el-input-number
-                                v-model="fileOptions.kmin"
-                                :step="1" :min="0"/>
+                            <el-input-number v-model="fileOptions.kmin" :step="1" :min="0" />
                         </el-form-item>
                         <el-form-item label="Kmax">
-                            <el-input-number
-                                v-model="fileOptions.kmax"
-                                :step="1" :min="0"/>
+                            <el-input-number v-model="fileOptions.kmax" :step="1" :min="0" />
                         </el-form-item>
                         <el-form-item label="Minimize">
-                            <el-switch v-model="fileOptions.minimize"/>
+                            <el-switch v-model="fileOptions.minimize" />
                         </el-form-item>
                         <el-form-item label="Mixed">
-                            <el-switch v-model="fileOptions.mixed"/>
+                            <el-switch v-model="fileOptions.mixed" />
                         </el-form-item>
                         <div style="margin-top: 16px; text-align: center;">
                             <el-button @click="clear" size="mini" :disabled="loading">Clear</el-button>
-                            <el-button @click="genWebp" size="mini" :disabled="loading">Encode!</el-button>
+                            <el-button @click="genWebp" size="mini" :disabled="loading">Encode</el-button>
                         </div>
-                        <div v-if="webp.src !== ''" class="webp-info">Size: {{readableWebpSize}}</div>
+                        <div v-if="!loading && webp.src !== ''" class="webp-info">Size: {{readableWebpSize}}</div>
                         <div v-if="loading" class="webp-info">
-                            <el-progress :percentage="progress" :format="progress + ''"/>
+                            <el-progress :text-inside="true" :stroke-width="24" :percentage="progress" />
                         </div>
                     </el-form>
                 </div>
                 <div class="control-panel">
-                    <div class="title">Batch Frame Options</div>
-                    <el-form label-width="120px" label-position="left" size="mini">
+                    <div class="title">Global Frame Options</div>
+                    <el-form label-width="108px" label-position="left" size="mini">
                         <el-form-item label="Duration (ms)">
-                            <el-input-number 
-                                v-model="batchFrameOptions.duration"
-                                :step="1"
-                                @change="batchFrameOptionsChanged.duration = true"/>
-                            <el-button
-                                icon="el-icon-check" plain
-                                :type="batchFrameOptionsChanged.duration ? 'danger' : ''"
-                                @click="batchChangeFrameOption('duration')"/>
+                            <el-input-number v-model="globalFrameOptions.duration" :step="1" />
                         </el-form-item>
-                        <el-form-item label="Quality (0~100)">
-                            <el-input-number
-                                v-model="batchFrameOptions.quality"
-                                :min="0" :max="100" :step="0.1"
-                                @change="batchFrameOptionsChanged.quality = true"/>
-                            <el-button
-                                icon="el-icon-check" plain
-                                :type="batchFrameOptionsChanged.quality ? 'danger' : ''"
-                                @click="batchChangeFrameOption('quality')"/>
+                        <el-form-item label="Quality">
+                            <el-input-number v-model="globalFrameOptions.quality" :min="0" :max="100" :step="0.1" />
                         </el-form-item>
-                        <el-form-item label="Method (0~6)">
-                            <el-input-number 
-                                v-model="batchFrameOptions.method"
-                                :min="0" :max="6" :step="1"
-                                @change="batchFrameOptionsChanged.method = true"/>
-                            <el-button
-                                icon="el-icon-check" plain
-                                :type="batchFrameOptionsChanged.method ? 'danger' : ''"
-                                @click="batchChangeFrameOption('method')"/>
+                        <el-form-item label="Method">
+                            <el-input-number v-model="globalFrameOptions.method" :min="0" :max="6" :step="1" />
                         </el-form-item>
                         <el-form-item label="Lossless">
-                            <el-switch
-                                v-model="batchFrameOptions.lossless"
-                                @change="batchFrameOptionsChanged.lossless = true"/>
-                            <el-button
-                                icon="el-icon-check" plain
-                                :type="batchFrameOptionsChanged.lossless ? 'danger' : ''"
-                                @click="batchChangeFrameOption('lossless')"/>
+                            <el-switch v-model="globalFrameOptions.lossless" />
                         </el-form-item>
                         <el-form-item label="Exact">
-                            <el-switch
-                                v-model="batchFrameOptions.exact"
-                                @change="batchFrameOptionsChanged.exact = true"/>
-                            <el-button
-                                icon="el-icon-check" plain
-                                :type="batchFrameOptionsChanged.exact ? 'danger' : ''"
-                                @click="batchChangeFrameOption('exact')"/>
+                            <el-switch v-model="globalFrameOptions.exact" />
                         </el-form-item>
                     </el-form>
                 </div>
@@ -229,13 +198,14 @@ const App = {
                 </div>
             </div>
             <div class="frames-container">
-                <el-empty v-if="!frames.length" description="Drag and drop images to here"/>
+                <el-empty v-if="!frames.length" description="Drag and drop images here"/>
                 <div v-else class="frames-wrap">
                     <image-frame
                         v-for="frame of frames"
                         :key="frame.src"
                         :src="frame.src"
                         :name="frame.name"
+                        :global-options="globalFrameOptions"
                         v-model="frame.options"/>
                     <i v-for="i in 10"></i>
                 </div>
@@ -253,7 +223,7 @@ const App = {
                 @drop.prevent.self.stop="onDropFiles"
                 @dragover.prevent.self.stop=""
                 @dragleave.prevent.self.stop="dragging = false;">
-                Drag & drop images to here!
+                Drag and drop images here!
             </div>
         </div>
     `,
@@ -266,17 +236,10 @@ const App = {
                 minimize: true,
                 mixed: true,
             },
-            batchFrameOptions: {
+            globalFrameOptions: {
                 duration: 100,
                 quality: 100,
                 method: 0,
-                lossless: false,
-                exact: false,
-            },
-            batchFrameOptionsChanged: {
-                duration: false,
-                quality: false,
-                method: false,
                 lossless: false,
                 exact: false,
             },
@@ -318,8 +281,8 @@ const App = {
         ]);
         await this.genWebp();
         this.$notify.info({
-            title: 'Hint',
-            message: 'Drag and drop image to here to generate a webp!',
+            title: 'Tip',
+            message: 'Drag and drop images here to create a WebP.',
             position: 'bottom-right',
             duration: 0
         });
@@ -368,18 +331,10 @@ const App = {
             for (let image of images) {
                 frames.push({
                     ...image,
-                    options: {...this.batchFrameOptions},
+                    options: {},
                 });
             }
             this.frames = this.sortFrames(frames);
-        },
-        batchChangeFrameOption(key) {
-            let value = this.batchFrameOptions[key];
-            let frames = [...this.frames];
-            for (let frame of frames) {
-                frame.options[key] = value;
-            }
-            this.batchFrameOptionsChanged[key] = false;
         },
         toHumanReadableSize(bytes, precision = 2) {
             if (typeof bytes !== 'number' || isNaN(bytes) || !isFinite(bytes)) return '-';
@@ -413,7 +368,7 @@ const App = {
             await new Promise((resolve, reject) => {
                 image.onload = resolve;
                 image.onerror = () => {
-                    reject(new Error(`Error load image ${url}`));
+                    reject(new Error(`Failed to load image: ${url}`));
                 };
                 image.src = url;
             });
@@ -435,9 +390,13 @@ const App = {
         },
         async genWebp() {
             if (this.frames.length === 0) {
-                this.$message.error('No frames, drag and drop image frames to continue');
+                this.$message.error('No frames loaded. Drag and drop images here to continue.');
                 return;
             }
+            const frames = this.frames.map(frame => ({
+                ...frame,
+                options: {...this.globalFrameOptions, ...frame.options},
+            }));
             this.loading = true;
             this.progress = 0;
             this.revokeWebpUrl();
@@ -450,26 +409,27 @@ const App = {
             try {
                 encoder = await createWebpWorker();
                 await encoder.init(this.fileOptions);
-                this.progress = 5;
-                for (let i = 0; i < this.frames.length; ++i) {
-                    const frame = this.frames[i];
+                this.progress = 2;
+                for (let i = 0; i < frames.length; ++i) {
+                    const frame = frames[i];
                     const image = await this.loadImage(frame.src);
                     const imageData = this.getImageData(image);
                     const pixels = new Uint8Array(imageData.data.buffer);
                     await encoder.push(pixels, image.naturalWidth, image.naturalHeight, frame.options);
-                    this.progress = 5 + 90 / this.frames.length * (i + 1);
+                    this.progress = 2 + 96 / frames.length * (i + 1);
                 }
-                this.progress = 95;
+                this.progress = 98;
                 const bytes = await encoder.encode();
                 const blob = new Blob([bytes], {type: 'image/webp'});
                 const size = bytes.length;
                 const url = URL.createObjectURL(blob);
                 this.webp = {src: url, size};
                 this.progress = 100;
+                await new Promise(resolve => setTimeout(resolve, 300));
                 this.loading = false;
             } catch (e) {
                 console.error(e);
-                this.$message.error(`Encode webp failed! ${e.message}`);
+                this.$message.error(`Failed to encode WebP: ${e.message}`);
                 this.progress = 0;
                 this.loading = false;
             } finally {
