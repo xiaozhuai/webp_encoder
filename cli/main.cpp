@@ -14,7 +14,10 @@ int main() {
     WebpEncoder::FrameOptions frame_options{100, false, 100.0f, 0, false};
 
     WebpEncoder::WebpEncoder encoder;
-    encoder.Init(file_options);
+    if (!encoder.Init(file_options)) {
+        std::cerr << "Init encoder failed" << std::endl;
+        return 1;
+    }
 
     std::vector<std::string> files = {
         "docs/frames/frame_0.jpg",
@@ -25,13 +28,22 @@ int main() {
 
     for (const auto &file : files) {
         Image image;
-        image.ReadFile(file);
+        if (!image.ReadFile(file)) {
+            std::cerr << "Read image failed: " << file << std::endl;
+            return 1;
+        }
         std::cout << "Push image " << file << std::endl;
-        encoder.Push(image.pixels, image.width, image.height, frame_options);
+        if (!encoder.Push(image.pixels(), image.width(), image.height(), frame_options)) {
+            std::cerr << "Push image failed: " << file << std::endl;
+            return 1;
+        }
     }
 
     std::cout << "Write test.webp" << std::endl;
-    encoder.Write("test.webp");
+    if (!encoder.Write("test.webp")) {
+        std::cerr << "Write output failed: test.webp" << std::endl;
+        return 1;
+    }
 
     return 0;
 }

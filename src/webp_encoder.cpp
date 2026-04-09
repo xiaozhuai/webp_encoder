@@ -10,6 +10,7 @@
 #include <fstream>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 #if !defined(WEBP_ENCODER_DISABLE_EXCEPTION)
@@ -37,6 +38,9 @@ WebpEncoder::~WebpEncoder() = default;
 
 bool WebpEncoder::Init(const FileOptions &options) {
     impl_ = std::make_unique<Impl>();
+    width_ = -1;
+    height_ = -1;
+    timestamp_ms_ = 0;
 
     if (!WebPAnimEncoderOptionsInit(&impl_->anim_config)) {
         WEBP_ENCODER_THROW("WebPAnimEncoderOptionsInit failed");
@@ -53,6 +57,19 @@ bool WebpEncoder::Init(const FileOptions &options) {
 }
 
 bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const FrameOptions &options) {
+    if (impl_ == nullptr) {
+        WEBP_ENCODER_THROW("WebpEncoder::Init must be called before Push");
+        return false;
+    }
+    if (width <= 0 || height <= 0) {
+        WEBP_ENCODER_THROW("width and height must be positive");
+        return false;
+    }
+    if (pixels == nullptr) {
+        WEBP_ENCODER_THROW("Pixels must not be null");
+        return false;
+    }
+
     if (impl_->enc == nullptr) {
         width_ = width;
         height_ = height;
@@ -122,6 +139,15 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const FrameOption
 }
 
 WebpEncoder::EncodedData WebpEncoder::Encode() {
+    if (impl_ == nullptr) {
+        WEBP_ENCODER_THROW("WebpEncoder::Init must be called before Encode");
+        return {};
+    }
+    if (impl_->enc == nullptr) {
+        WEBP_ENCODER_THROW("At least one frame must be pushed before Encode");
+        return {};
+    }
+
     if (!WebPAnimEncoderAdd(impl_->enc.get(), nullptr, timestamp_ms_, nullptr)) {
         WEBP_ENCODER_THROW("WebPAnimEncoderAdd failed");
         return {};
@@ -129,6 +155,7 @@ WebpEncoder::EncodedData WebpEncoder::Encode() {
 
     WebPData webp_data;
     WebPDataInit(&webp_data);
+    std::unique_ptr<WebPData, std::function<void(WebPData *)>> webp_data_guard{&webp_data, WebPDataClear};
 
     if (!WebPAnimEncoderAssemble(impl_->enc.get(), &webp_data)) {
         WEBP_ENCODER_THROW("WebPAnimEncoderAssemble failed");
@@ -158,11 +185,24 @@ WebpEncoder::EncodedData WebpEncoder::Encode() {
 }
 
 #if !defined(__EMSCRIPTEN__)
-void WebpEncoder::Write(const std::string &file) {
+bool WebpEncoder::Write(const std::string &file) {
     auto encoded_data = Encode();
+    if (encoded_data.empty()) {
+        WEBP_ENCODER_THROW("Encode failed before writing output file");
+        return false;
+    }
     std::ofstream out(file, std::ios_base::out | std::ios_base::binary);
+    if (!out.is_open()) {
+        WEBP_ENCODER_THROW("Open output file failed: " + file);
+        return false;
+    }
     out.write(reinterpret_cast<const char *>(encoded_data.data()), static_cast<std::streamsize>(encoded_data.size()));
+    if (!out.good()) {
+        WEBP_ENCODER_THROW("Write output file failed: " + file);
+        return false;
+    }
     out.close();
+    return true;
 }
 #endif
 

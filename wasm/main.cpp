@@ -8,6 +8,9 @@
 
 #include "webp_encoder.hpp"
 
+void throw_js_error(const std::string &msg);
+#define WEBP_ENCODER_THROW(str) throw_js_error(str)
+
 int main() { return 0; }
 
 static bool WebpEncoder_Init(WebpEncoder::WebpEncoder &self, const emscripten::val &options) {
@@ -32,10 +35,20 @@ static bool WebpEncoder_Init(WebpEncoder::WebpEncoder &self, const emscripten::v
 
 static bool WebpEncoder_Push(WebpEncoder::WebpEncoder &self, const emscripten::val &pixels, int width, int height,
                              const emscripten::val &options) {
-    auto size = pixels["length"].as<size_t>();
+    const auto size = pixels["length"].as<size_t>();
+    if (width <= 0 || height <= 0) {
+        throw_js_error("width and height must be positive");
+        return false;
+    }
+    const auto expected_size = static_cast<size_t>(width) * static_cast<size_t>(height) * size_t{4};
+    if (size != expected_size) {
+        throw_js_error("pixels length must equal width * height * 4");
+        return false;
+    }
+
     std::vector<uint8_t> native_pixels(size);
-    emscripten::val memoryView{emscripten::typed_memory_view(native_pixels.size(), native_pixels.data())};
-    memoryView.call<void>("set", pixels);
+    emscripten::val memory_view{emscripten::typed_memory_view(native_pixels.size(), native_pixels.data())};
+    memory_view.call<void>("set", pixels);
 
     WebpEncoder::FrameOptions o;
     if (options.hasOwnProperty("duration")) {
@@ -53,9 +66,7 @@ static bool WebpEncoder_Push(WebpEncoder::WebpEncoder &self, const emscripten::v
     if (options.hasOwnProperty("exact")) {
         o.exact = options["exact"].as<bool>();
     }
-    auto ret = self.Push(native_pixels.data(), width, height, o);
-    emscripten_sleep(0);
-    return ret;
+    return self.Push(native_pixels.data(), width, height, o);
 }
 
 static emscripten::val WebpEncoder_Encode(WebpEncoder::WebpEncoder &self) { return self.Encode(); }

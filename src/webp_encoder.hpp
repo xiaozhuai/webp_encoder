@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -112,12 +113,7 @@ public:
     [[nodiscard]] EncodedData Encode();
 
 #if !defined(__EMSCRIPTEN__)
-    /**
-     * Write a webp file
-     *
-     * @param file          File path
-     */
-    void Write(const std::string &file);
+    bool Write(const std::string &file);
 #endif
 
 private:

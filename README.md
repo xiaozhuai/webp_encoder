@@ -19,7 +19,7 @@ See online page [https://xiaozhuai.github.io/webp_encoder/](https://xiaozhuai.gi
 
 int main() {
     WebpEncoder::WebpEncoder encoder;
-    encoder.Init(file_options);
+
     WebpEncoder::FileOptions file_options{
             .minimize = true,
             .loop = 0,
@@ -27,6 +27,8 @@ int main() {
             .kmin = 0,
             .mixed = true,
     };
+    encoder.Init(file_options);
+
     WebpEncoder::FrameOptions frame_options{
             .duration = 100,
             .lossless = false,

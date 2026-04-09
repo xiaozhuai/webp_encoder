@@ -99,7 +99,7 @@ function createWebpWorker() {
         const cb = callbacks.get(id);
         if (!cb) return;
         callbacks.delete(id);
-        if (error) cb.reject(error);
+        if (error) cb.reject(new Error(error));
         else cb.resolve(result);
     };
 
@@ -135,7 +135,7 @@ function createWebpWorker() {
 const App = {
     template: `
         <div id="app"
-            @dragenter.prevent.stop="dragging = true;">
+            @dragenter.prevent.stop="onDragEnter">
             <div class="top-panel">
                 <div class="control-panel">
                     <div class="title">File Options</div>
@@ -162,7 +162,7 @@ const App = {
                             <el-switch v-model="fileOptions.mixed"/>
                         </el-form-item>
                         <div style="margin-top: 16px; text-align: center;">
-                            <el-button @click="clear" size="mini">Clear</el-button>
+                            <el-button @click="clear" size="mini" :disabled="loading">Clear</el-button>
                             <el-button @click="genWebp" size="mini" :disabled="loading">Encode!</el-button>
                         </div>
                         <div v-if="webp.src !== ''" class="webp-info">Size: {{readableWebpSize}}</div>
@@ -325,12 +325,33 @@ const App = {
         });
     },
     methods: {
+        revokeFrameUrls() {
+            for (const frame of this.frames) {
+                if (typeof frame.src === 'string' && frame.src.startsWith('blob:')) {
+                    URL.revokeObjectURL(frame.src);
+                }
+            }
+        },
+        revokeWebpUrl() {
+            if (typeof this.webp.src === 'string' && this.webp.src.startsWith('blob:')) {
+                URL.revokeObjectURL(this.webp.src);
+            }
+        },
         sortFrames(frames) {
             return frames.sort((a, b) => {
                 return a.name.localeCompare(b.name);
             });
         },
+        onDragEnter() {
+            if (this.loading) {
+                return;
+            }
+            this.dragging = true;
+        },
         onDropFiles(evt) {
+            if (this.loading) {
+                return;
+            }
             this.dragging = false;
             let files = evt.dataTransfer.files;
             let images = [];
@@ -342,6 +363,7 @@ const App = {
             this.onImages(images);
         },
         onImages(images) {
+            this.revokeFrameUrls();
             let frames = [];
             for (let image of images) {
                 frames.push({
@@ -375,6 +397,11 @@ const App = {
             }
         },
         clear() {
+            if (this.loading) {
+                return;
+            }
+            this.revokeFrameUrls();
+            this.revokeWebpUrl();
             this.frames = [];
             this.webp = {
                 src: '',
@@ -413,13 +440,15 @@ const App = {
             }
             this.loading = true;
             this.progress = 0;
+            this.revokeWebpUrl();
             this.webp = {
                 src: '',
                 size: 0,
             };
 
+            let encoder = null;
             try {
-                const encoder = await createWebpWorker();
+                encoder = await createWebpWorker();
                 await encoder.init(this.fileOptions);
                 this.progress = 5;
                 for (let i = 0; i < this.frames.length; ++i) {
@@ -443,6 +472,10 @@ const App = {
                 this.$message.error(`Encode webp failed! ${e.message}`);
                 this.progress = 0;
                 this.loading = false;
+            } finally {
+                if (encoder) {
+                    encoder.terminate();
+                }
             }
         },
         downloadWebp() {
