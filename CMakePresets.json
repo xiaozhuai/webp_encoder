@@ -87,21 +87,11 @@
             }
         },
         {
-            "name": "target-x86-windows",
+            "name": "target-x64-windows-static",
             "hidden": true,
-            "inherits": "target-windows",
-            "toolset": {
-                "value": "host=x86",
-                "strategy": "external"
-            },
-            "architecture": {
-                "value": "x86",
-                "strategy": "external"
-            },
-            "vendor": {
-                "jetbrains.com/clion": {
-                    "toolchain": "Visual Studio (x86)"
-                }
+            "inherits": "target-x64-windows",
+            "cacheVariables": {
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
             }
         },
         {
@@ -167,19 +157,11 @@
             }
         },
         {
-            "name": "target-arm64-v8a-android",
+            "name": "target-arm64-android",
             "hidden": true,
             "inherits": "target-android",
             "cacheVariables": {
                 "ANDROID_ABI": "arm64-v8a"
-            }
-        },
-        {
-            "name": "target-armeabi-v7a-android",
-            "hidden": true,
-            "inherits": "target-android",
-            "cacheVariables": {
-                "ANDROID_ABI": "armeabi-v7a"
             }
         },
         {
@@ -219,21 +201,12 @@
             }
         },
         {
-            "name": "triplet-x64-windows",
+            "name": "triplet-x64-windows-static",
             "hidden": true,
             "inherits": "vcpkg",
             "cacheVariables": {
-                "VCPKG_TARGET_TRIPLET": "x64-windows",
-                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
-            }
-        },
-        {
-            "name": "triplet-x86-windows",
-            "hidden": true,
-            "inherits": "vcpkg",
-            "cacheVariables": {
-                "VCPKG_TARGET_TRIPLET": "x86-windows",
-                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+                "VCPKG_HOST_TRIPLET": "x64-windows-static",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static"
             }
         },
         {
@@ -277,14 +250,6 @@
             }
         },
         {
-            "name": "triplet-arm-neon-android",
-            "hidden": true,
-            "inherits": "vcpkg",
-            "cacheVariables": {
-                "VCPKG_TARGET_TRIPLET": "arm-neon-android"
-            }
-        },
-        {
             "name": "triplet-x64-android",
             "hidden": true,
             "inherits": "vcpkg",
@@ -301,75 +266,39 @@
             }
         },
         {
-            "name": "x64-windows-debug",
+            "name": "x64-windows-static-debug",
             "inherits": [
                 "base",
                 "debug",
-                "target-x64-windows",
-                "triplet-x64-windows"
+                "target-x64-windows-static",
+                "triplet-x64-windows-static"
             ]
         },
         {
-            "name": "x64-windows-release",
+            "name": "x64-windows-static-release",
             "inherits": [
                 "base",
                 "release",
-                "target-x64-windows",
-                "triplet-x64-windows"
+                "target-x64-windows-static",
+                "triplet-x64-windows-static"
             ]
         },
         {
-            "name": "x64-windows-relwithdebinfo",
+            "name": "x64-windows-static-relwithdebinfo",
             "inherits": [
                 "base",
                 "relwithdebinfo",
-                "target-x64-windows",
-                "triplet-x64-windows"
+                "target-x64-windows-static",
+                "triplet-x64-windows-static"
             ]
         },
         {
-            "name": "x64-windows-minsizerel",
+            "name": "x64-windows-static-minsizerel",
             "inherits": [
                 "base",
                 "minsizerel",
-                "target-x64-windows",
-                "triplet-x64-windows"
-            ]
-        },
-        {
-            "name": "x86-windows-debug",
-            "inherits": [
-                "base",
-                "debug",
-                "target-x86-windows",
-                "triplet-x86-windows"
-            ]
-        },
-        {
-            "name": "x86-windows-release",
-            "inherits": [
-                "base",
-                "release",
-                "target-x86-windows",
-                "triplet-x86-windows"
-            ]
-        },
-        {
-            "name": "x86-windows-relwithdebinfo",
-            "inherits": [
-                "base",
-                "relwithdebinfo",
-                "target-x86-windows",
-                "triplet-x86-windows"
-            ]
-        },
-        {
-            "name": "x86-windows-minsizerel",
-            "inherits": [
-                "base",
-                "minsizerel",
-                "target-x86-windows",
-                "triplet-x86-windows"
+                "target-x64-windows-static",
+                "triplet-x64-windows-static"
             ]
         },
         {
@@ -517,75 +446,39 @@
             ]
         },
         {
-            "name": "arm64-v8a-android-debug",
+            "name": "arm64-android-debug",
             "inherits": [
                 "base",
                 "debug",
-                "target-arm64-v8a-android",
+                "target-arm64-android",
                 "triplet-arm64-android"
             ]
         },
         {
-            "name": "arm64-v8a-android-release",
+            "name": "arm64-android-release",
             "inherits": [
                 "base",
                 "release",
-                "target-arm64-v8a-android",
+                "target-arm64-android",
                 "triplet-arm64-android"
             ]
         },
         {
-            "name": "arm64-v8a-android-relwithdebinfo",
+            "name": "arm64-android-relwithdebinfo",
             "inherits": [
                 "base",
                 "relwithdebinfo",
-                "target-arm64-v8a-android",
+                "target-arm64-android",
                 "triplet-arm64-android"
             ]
         },
         {
-            "name": "arm64-v8a-android-minsizerel",
+            "name": "arm64-android-minsizerel",
             "inherits": [
                 "base",
                 "minsizerel",
-                "target-arm64-v8a-android",
+                "target-arm64-android",
                 "triplet-arm64-android"
-            ]
-        },
-        {
-            "name": "armeabi-v7a-android-debug",
-            "inherits": [
-                "base",
-                "debug",
-                "target-armeabi-v7a-android",
-                "triplet-arm-neon-android"
-            ]
-        },
-        {
-            "name": "armeabi-v7a-android-release",
-            "inherits": [
-                "base",
-                "release",
-                "target-armeabi-v7a-android",
-                "triplet-arm-neon-android"
-            ]
-        },
-        {
-            "name": "armeabi-v7a-android-relwithdebinfo",
-            "inherits": [
-                "base",
-                "relwithdebinfo",
-                "target-armeabi-v7a-android",
-                "triplet-arm-neon-android"
-            ]
-        },
-        {
-            "name": "armeabi-v7a-android-minsizerel",
-            "inherits": [
-                "base",
-                "minsizerel",
-                "target-armeabi-v7a-android",
-                "triplet-arm-neon-android"
             ]
         },
         {

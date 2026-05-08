@@ -39,12 +39,10 @@ jobs:
           - windows-2022
           - windows-2025
         target:
-          - preset: x64-windows-release
-            triplet: x64-windows
+          - preset: x64-windows-static-release
+            triplet: x64-windows-static
+            host_triplet: x64-windows-static
             arch: x64
-          - preset: x86-windows-release
-            triplet: x86-windows
-            arch: x86
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -60,7 +58,7 @@ jobs:
         shell: cmd
         run: |
           cmd /k .\vcpkg\bootstrap-vcpkg.bat
-          cmd /k .\vcpkg\vcpkg install --triplet ${{matrix.target.triplet}} --clean-after-build libwebp stb
+          cmd /k .\vcpkg\vcpkg install --triplet ${{matrix.target.triplet}} --host-triplet ${{matrix.target.host_triplet}} --clean-after-build libwebp stb
       - uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
           arch: ${{ matrix.target.arch }}
