@@ -28,7 +28,7 @@ void throw_js_error(const std::string &msg) { throw_js_error(msg.c_str()); }
 namespace WebpEncoder {
 
 struct WebpEncoder::Impl {
-    std::unique_ptr<WebPAnimEncoder, std::function<void(WebPAnimEncoder *)>> enc;
+    std::unique_ptr<WebPAnimEncoder, decltype(&WebPAnimEncoderDelete)> enc{nullptr, WebPAnimEncoderDelete};
     WebPAnimEncoderOptions anim_config{};
 };
 
@@ -73,8 +73,7 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const FrameOption
     if (impl_->enc == nullptr) {
         width_ = width;
         height_ = height;
-        impl_->enc = std::unique_ptr<WebPAnimEncoder, std::function<void(WebPAnimEncoder *)>>(
-            WebPAnimEncoderNew(width, height, &impl_->anim_config), WebPAnimEncoderDelete);
+        impl_->enc = {WebPAnimEncoderNew(width, height, &impl_->anim_config), WebPAnimEncoderDelete};
         if (!impl_->enc) {
             WEBP_ENCODER_THROW("WebPAnimEncoderNew failed");
             return false;
@@ -98,7 +97,7 @@ bool WebpEncoder::Push(uint8_t *pixels, int width, int height, const FrameOption
         WEBP_ENCODER_THROW("WebPPictureInit failed");
         return false;
     }
-    std::unique_ptr<WebPPicture, std::function<void(WebPPicture *)>> _{&pic, WebPPictureFree};
+    std::unique_ptr<WebPPicture, decltype(&WebPPictureFree)> pic_guard{&pic, WebPPictureFree};
 
 #if !defined(__wasm__)
     config.thread_level = 1;
@@ -155,14 +154,14 @@ WebpEncoder::EncodedData WebpEncoder::Encode() {
 
     WebPData webp_data;
     WebPDataInit(&webp_data);
-    std::unique_ptr<WebPData, std::function<void(WebPData *)>> webp_data_guard{&webp_data, WebPDataClear};
+    std::unique_ptr<WebPData, decltype(&WebPDataClear)> webp_data_guard{&webp_data, WebPDataClear};
 
     if (!WebPAnimEncoderAssemble(impl_->enc.get(), &webp_data)) {
         WEBP_ENCODER_THROW("WebPAnimEncoderAssemble failed");
         return {};
     }
 
-    std::unique_ptr<WebPMux, std::function<void(WebPMux *)>> mux{WebPMuxCreate(&webp_data, 0), WebPMuxDelete};
+    std::unique_ptr<WebPMux, decltype(&WebPMuxDelete)> mux{WebPMuxCreate(&webp_data, 0), WebPMuxDelete};
     if (mux == nullptr) {
         WEBP_ENCODER_THROW("WebPMuxCreate failed");
         return {};
