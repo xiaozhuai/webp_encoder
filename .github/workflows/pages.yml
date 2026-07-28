@@ -21,11 +21,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Checkout emsdk
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           repository: emscripten-core/emsdk
@@ -35,7 +35,7 @@ jobs:
           ./emsdk/emsdk install latest
           ./emsdk/emsdk activate latest
       - name: Checkout vcpkg
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: xiaozhuai/vcpkg
           submodules: recursive
@@ -52,11 +52,11 @@ jobs:
           cmake --preset wasm32-emscripten-release -B build .
           cmake --build build --target all
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Upload Pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: 'docs'
       - name: Deploy Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

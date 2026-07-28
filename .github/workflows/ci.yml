@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Install clang-format-22
@@ -45,11 +45,11 @@ jobs:
             arch: x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Checkout vcpkg
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: xiaozhuai/vcpkg
           submodules: recursive
@@ -76,8 +76,8 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - macos-14
           - macos-15
+          - macos-26
         target:
           - preset: x64-macos-release
             triplet: x64-osx
@@ -85,11 +85,11 @@ jobs:
             triplet: arm64-osx
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Checkout vcpkg
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: xiaozhuai/vcpkg
           submodules: recursive
@@ -118,11 +118,11 @@ jobs:
             triplet: x64-linux
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Checkout vcpkg
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: xiaozhuai/vcpkg
           submodules: recursive
@@ -150,11 +150,11 @@ jobs:
             triplet: wasm32-emscripten
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Checkout emsdk
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           repository: emscripten-core/emsdk
@@ -164,7 +164,7 @@ jobs:
           ./emsdk/emsdk install latest
           ./emsdk/emsdk activate latest
       - name: Checkout vcpkg
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: xiaozhuai/vcpkg
           submodules: recursive
